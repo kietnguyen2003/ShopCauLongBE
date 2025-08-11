@@ -1,310 +1,264 @@
-# Backend - Apache Kafka Implementation
+# 🛒 Kafka Order Demo - Backend
 
-Chi tiết implementation của Apache Kafka trong Go backend cho hệ thống đặt hàng real-time.
+Backend service cho hệ thống quản lý đơn hàng cầu lông với Kafka event streaming và WebSocket real-time.
 
-## 🏗️ Kiến trúc Kafka
+## 🏗️ Kiến trúc (Domain Driven Design + Clean Architecture)
 
 ```
-Order API ──> Kafka Producer ──> Topics ──> Kafka Consumer ──> WebSocket
-    │                                │                              │
-    │         ┌─ order-created       │         ┌─ Process Events   │
-    │         ├─ order-updated       │         ├─ Send Notifications
-    │         ├─ user-notifications  │         └─ Broadcast WebSocket
-    │         └─ admin-notifications │
-    │                                │
-    └─ Direct WebSocket Broadcast ───┘
+backend/
+├── cmd/
+│   └── server/
+│       └── main.go                 # 🚀 Entry point của ứng dụng
+├── internal/
+│   ├── domain/                     # 📋 Domain Layer (Business Logic)
+│   │   ├── auth/
+│   │   │   └── user.go            # User entity và business rules
+│   │   ├── order/
+│   │   │   └── order.go           # Order entity và business logic
+│   │   └── product/
+│   │       └── product.go         # Product entity và validation
+│   ├── application/                # 🔄 Application Layer (Use Cases)
+│   │   ├── auth/
+│   │   │   └── service.go         # Authentication use cases
+│   │   ├── order/
+│   │   │   └── service.go         # Order management use cases
+│   │   └── product/
+│   │       └── service.go         # Product management use cases
+│   ├── infrastructure/             # 🔧 Infrastructure Layer (External)
+│   │   ├── config/
+│   │   │   └── config.go          # Configuration management
+│   │   ├── database/
+│   │   │   ├── database.go        # Database connection & seeding
+│   │   │   ├── gorm_user_repository.go
+│   │   │   ├── gorm_product_repository.go
+│   │   │   └── gorm_order_repository.go
+│   │   ├── kafka/
+│   │   │   └── event_bus.go       # Kafka event publishing
+│   │   └── websocket/
+│   │       └── hub.go             # WebSocket management
+│   └── interfaces/                 # 🌐 Interface Layer (Presentation)
+│       └── http/
+│           ├── auth_handler.go     # Authentication endpoints
+│           ├── order_handler.go    # Order management endpoints
+│           └── product_handler.go  # Product endpoints
+├── go.mod
+├── go.sum
+├── Dockerfile                      # 🐳 Container configuration
+└── README.md
 ```
 
-## 📡 Kafka Topics
+## 🎯 Nguyên tắc Clean Architecture
 
-### 1. `order-created` 
-**Mục đích**: Thông báo khi có đơn hàng mới được tạo
+### 1. **Domain Layer** 📋
+- **Trách nhiệm**: Business logic, entities, domain rules
+- **Đặc điểm**: Độc lập hoàn toàn, không phụ thuộc layer nào khác
+- **Chứa**: User, Order, Product entities với validation
 
-**Producer**: `handlers/orders.go:CreateOrder()`
-```go
-orderEvent := kafka.OrderEvent{
-    OrderID:     order.ID,
-    UserID:      userID,
-    Type:        "created",
-    Status:      order.Status,
-    TotalAmount: order.TotalAmount,
-    Timestamp:   time.Now(),
-}
-kafkaManager.PublishOrderEvent(orderEvent)
-```
+### 2. **Application Layer** 🔄
+- **Trách nhiệm**: Use cases, orchestration, business workflows  
+- **Đặc điểm**: Sử dụng domain entities, định nghĩa interfaces
+- **Chứa**: Services cho Auth, Order, Product management
 
-**Consumer**: `kafka/manager.go:consumeOrderEvents()`
-```go
-// Process created orders
-go func() {
-    for {
-        msg, err := createdReader.ReadMessage(ctx)
-        // Send notification to admin
-        adminNotification := NotificationEvent{
-            Type:      "admin_notification",
-            Message:   "Đơn hàng mới được tạo",
-            OrderID:   event.OrderID,
-            Timestamp: time.Now(),
-        }
-        m.PublishNotification(adminNotification)
-    }
-}()
-```
+### 3. **Infrastructure Layer** 🔧
+- **Trách nhiệm**: External concerns (database, messaging, websockets)
+- **Đặc điểm**: Implement interfaces được định nghĩa trong application layer
+- **Chứa**: Database repos, Kafka event bus, WebSocket hub
 
-### 2. `order-updated`
-**Mục đích**: Thông báo khi trạng thái đơn hàng thay đổi
+### 4. **Interface Layer** 🌐
+- **Trách nhiệm**: HTTP endpoints, request/response handling
+- **Đặc điểm**: Chuyển đổi HTTP requests thành application use cases
+- **Chứa**: REST API handlers
 
-**Producer**: `handlers/orders.go:UpdateOrderStatus()`
-```go
-orderEvent := kafka.OrderEvent{
-    OrderID:     order.ID,
-    UserID:      order.UserID,
-    Type:        "updated",
-    Status:      req.Status,
-    TotalAmount: order.TotalAmount,
-    Timestamp:   time.Now(),
-}
-kafkaManager.PublishOrderEvent(orderEvent)
-```
+## 🚀 Công nghệ sử dụng
 
-**Consumer**: `kafka/manager.go:consumeOrderEvents()`
-```go
-// Process updated orders
-go func() {
-    for {
-        msg, err := updatedReader.ReadMessage(ctx)
-        // Send notification to user based on status
-        var message string
-        switch event.Status {
-        case "confirmed":
-            message = "Đơn hàng của bạn đã được xác nhận"
-        case "shipped":
-            message = "Đơn hàng của bạn đã được giao vận"
-        // ...
-        }
-        userNotification := NotificationEvent{
-            UserID:    event.UserID,
-            Type:      "order_updated",
-            Message:   message,
-            OrderID:   event.OrderID,
-        }
-        m.PublishNotification(userNotification)
-    }
-}()
-```
+- **Framework**: Gin (HTTP router)
+- **Database**: PostgreSQL + GORM
+- **Message Queue**: Apache Kafka (IBM Sarama)
+- **Real-time**: WebSocket (Gorilla)
+- **Authentication**: JWT
+- **Containerization**: Docker
 
-### 3. `admin-notifications`
-**Mục đích**: Thông báo dành cho admin (đơn hàng mới, etc.)
+## 📦 Cài đặt & Chạy
 
-**Producer**: Kafka Consumer tự động tạo từ `order-created` events
-**Consumer**: `kafka/manager.go:consumeAdminNotifications()`
+### Prerequisites
+- Go 1.21+
+- Docker & Docker Compose
+- PostgreSQL
+- Apache Kafka
 
-### 4. `user-notifications`  
-**Mục đích**: Thông báo dành cho user (trạng thái đơn hàng)
-
-**Producer**: Kafka Consumer tự động tạo từ `order-updated` events
-**Consumer**: `kafka/manager.go:consumeUserNotifications()`
-
-## 🔧 Kafka Configuration
-
-### Connection Setup
-```go
-// kafka/manager.go
-func NewManager(brokers []string) *Manager {
-    m := &Manager{
-        brokers: brokers,
-        writers: make(map[string]*kafka.Writer),
-        readers: make(map[string]*kafka.Reader),
-    }
-    
-    // Initialize writers for each topic
-    topics := []string{TopicOrderCreated, TopicOrderUpdated, TopicUserNotifications, TopicAdminNotifications}
-    for _, topic := range topics {
-        m.writers[topic] = &kafka.Writer{
-            Addr:     kafka.TCP(brokers...),
-            Topic:    topic,
-            Balancer: &kafka.LeastBytes{},
-        }
-    }
-    return m
-}
-```
-
-### Consumer Groups
-```go
-// Consumer for order created events
-createdReader := kafka.NewReader(kafka.ReaderConfig{
-    Brokers:  m.brokers,
-    Topic:    TopicOrderCreated,
-    GroupID:  "order-processor",        // Consumer group
-    MinBytes: 1,                        // Min bytes to read
-    MaxBytes: 10e6,                     // Max bytes to read
-})
-```
-
-## 📨 Event Structures
-
-### OrderEvent
-```go
-type OrderEvent struct {
-    OrderID     uint      `json:"order_id"`
-    UserID      uint      `json:"user_id"`
-    Type        string    `json:"type"`     // "created", "updated"
-    Status      string    `json:"status"`
-    TotalAmount float64   `json:"total_amount"`
-    Timestamp   time.Time `json:"timestamp"`
-}
-```
-
-### NotificationEvent
-```go
-type NotificationEvent struct {
-    UserID    uint      `json:"user_id,omitempty"`
-    Type      string    `json:"type"`     // "order_created", "order_updated", "admin_notification"
-    Message   string    `json:"message"`
-    OrderID   uint      `json:"order_id,omitempty"`
-    Timestamp time.Time `json:"timestamp"`
-}
-```
-
-## 🔄 Event Flow
-
-### 1. User đặt hàng
-```
-POST /api/orders 
-    ↓
-CreateOrder() 
-    ↓
-┌─ Save to Database
-│
-├─ Publish "order-created" event
-│       ↓
-│   Kafka Consumer nhận event
-│       ↓
-│   Publish "admin-notification" 
-│       ↓
-│   Admin WebSocket broadcast
-│
-└─ Direct WebSocket broadcast (backup)
-```
-
-### 2. Admin cập nhật trạng thái
-```
-PUT /api/admin/orders/:id
-    ↓
-UpdateOrderStatus()
-    ↓
-┌─ Update Database  
-│
-├─ Publish "order-updated" event
-│       ↓
-│   Kafka Consumer nhận event
-│       ↓
-│   Publish "user-notification"
-│       ↓
-│   User WebSocket broadcast
-│
-└─ Direct WebSocket broadcast (backup)
-```
-
-## 🚀 Cách chạy và debug
-
-### 1. Khởi động Kafka
+### Development
 ```bash
+# 1. Clone repository
+git clone <repo-url>
+cd backend
+
+# 2. Install dependencies
+go mod tidy
+
+# 3. Run with Docker Compose (recommended)
 docker-compose up -d
+
+# 4. Or run locally
+go run cmd/server/main.go
 ```
 
-### 2. Kiểm tra Kafka Topics
+### Build
 ```bash
-# List topics
-docker exec kafka-demo-kafka kafka-topics --bootstrap-server localhost:9092 --list
+# Build binary
+go build -o bin/server cmd/server/main.go
 
-# Read messages từ topic
-docker exec kafka-demo-kafka kafka-console-consumer \
-  --bootstrap-server localhost:9092 \
-  --topic order-created \
-  --from-beginning
+# Build Docker image
+docker build -t kafka-order-backend .
 ```
 
-### 3. Monitor Consumer Groups
-```bash
-# List consumer groups
-docker exec kafka-demo-kafka kafka-consumer-groups \
-  --bootstrap-server localhost:9092 --list
+## 🔧 Cấu hình
 
-# Check consumer group status  
-docker exec kafka-demo-kafka kafka-consumer-groups \
-  --bootstrap-server localhost:9092 \
-  --group order-processor --describe
+Cấu hình thông qua environment variables:
+
+```bash
+PORT=8080
+DATABASE_URL=postgres://user:password@localhost:5432/kafka_demo?sslmode=disable
+JWT_SECRET=your-secret-key
+KAFKA_BROKERS=localhost:9092
 ```
 
-### 4. Reset Consumer Offset (nếu cần)
+## 📡 API Endpoints
+
+### Authentication
+- `POST /auth/register` - Đăng ký user
+- `POST /auth/login` - Đăng nhập user
+- `POST /auth/admin-login` - Đăng nhập admin
+
+### Products
+- `GET /api/products` - Lấy danh sách sản phẩm
+- `GET /api/products/:id` - Lấy chi tiết sản phẩm
+
+### Orders (Protected)
+- `POST /api/orders` - Tạo đơn hàng
+- `GET /api/orders` - Lấy đơn hàng của user
+
+### Admin (Protected + Admin Role)
+- `GET /api/admin/orders` - Lấy tất cả đơn hàng
+- `PUT /api/admin/orders/:id` - Cập nhật trạng thái đơn hàng
+
+### WebSocket
+- `GET /ws/user/:userID` - WebSocket cho user
+- `GET /ws/admin` - WebSocket cho admin
+
+## 🎯 Event Flow
+
+1. **Tạo đơn hàng** → Kafka event `order-created` → WebSocket notification cho admin
+2. **Cập nhật đơn hàng** → Kafka event `order-updated` → WebSocket notification cho user
+
+## 🏗️ DDD Components
+
+### Domain Entities
+```go
+// User entity với business rules
+type User struct {
+    ID       uint
+    Username string
+    Email    string
+    // Business methods
+    IsValidForLogin() bool
+    UpdatePassword(newPassword string) error
+}
+
+// Order aggregate với business logic
+type Order struct {
+    ID          uint
+    UserID      uint
+    OrderItems  []OrderItem
+    Status      OrderStatus
+    // Business methods
+    AddItem(productID uint, quantity int) error
+    UpdateStatus(status OrderStatus) error
+    CanBeModified() bool
+}
+```
+
+### Repository Interfaces
+```go
+// Định nghĩa trong domain layer
+type UserRepository interface {
+    Create(user *User) error
+    GetByID(id uint) (*User, error)
+    GetByUsername(username string) (*User, error)
+}
+
+// Implement trong infrastructure layer
+type GormUserRepository struct {
+    db *gorm.DB
+}
+```
+
+### Use Cases
+```go
+// Application layer services
+type AuthService struct {
+    userRepo  auth.UserRepository
+    jwtSecret string
+}
+
+func (s *AuthService) Login(req LoginRequest) (*AuthResponse, error) {
+    // Business logic orchestration
+    user, err := s.userRepo.GetByUsername(req.Username)
+    // Validation, JWT generation, etc.
+}
+```
+
+## 🧪 Testing
+
 ```bash
-docker exec kafka-demo-kafka kafka-consumer-groups \
-  --bootstrap-server localhost:9092 \
-  --group order-processor \
-  --reset-offsets --to-earliest --all-topics --execute
+# Run tests
+go test ./...
+
+# Run tests with coverage
+go test -cover ./...
+
+# Test specific layer
+go test ./internal/domain/...
+go test ./internal/application/...
+```
+
+## 🔄 Kafka Event Flow
+
+```
+Order Created → Kafka Producer → order-created topic → Consumer → WebSocket Admin
+Order Updated → Kafka Producer → order-updated topic → Consumer → WebSocket User
 ```
 
 ## 🐛 Troubleshooting
 
-### 1. Consumer không nhận message
-**Triệu chứng**: Logs hiển thị "EOF" errors
-**Giải pháp**:
+### Build Issues
 ```bash
-# Reset consumer group
-docker exec kafka-demo-kafka kafka-consumer-groups \
-  --bootstrap-server localhost:9092 \
-  --group order-processor \
-  --reset-offsets --to-latest --all-topics --execute
-  
-# Restart backend
-cd backend && go run main.go
+# Clean module cache
+go clean -modcache
+go mod download
+go mod tidy
 ```
 
-### 2. Topic không tồn tại
-**Triệu chứng**: "Topic not found" errors
-**Giải pháp**:
+### Database Issues
 ```bash
-# Create topic manually
-docker exec kafka-demo-kafka kafka-topics \
-  --create --topic order-created \
-  --bootstrap-server localhost:9092 \
-  --partitions 1 --replication-factor 1
+# Reset database
+docker-compose down -v
+docker-compose up -d
 ```
 
-### 3. Kafka timeout
-**Triệu chứng**: "context deadline exceeded"
-**Giải pháp**: Tăng timeout trong consumer config:
-```go
-ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-```
+## 📄 License
 
-## 📊 Monitoring với Kafdrop
+MIT License - xem file LICENSE để biết thêm chi tiết.
 
-Truy cập `http://localhost:9000` để:
-- Xem tất cả topics và partitions
-- Monitor consumer groups và lag
-- Đọc messages trong topics
-- Debug Kafka cluster health
+## 🤝 Contributing
 
-## 🎯 Best Practices
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-1. **Error Handling**: Luôn handle errors trong consumers, không để crash
-2. **Timeout**: Set reasonable timeout cho consumers để tránh block
-3. **Consumer Groups**: Sử dụng consumer groups cho scalability
-4. **Message Format**: Consistent JSON format cho tất cả events
-5. **Backup Mechanisms**: WebSocket broadcast trực tiếp như fallback
-6. **Monitoring**: Sử dụng Kafdrop để monitor Kafka health
+## 📞 Liên hệ
 
-## 🔗 Dependencies
-
-```go
-go.mod:
-- github.com/segmentio/kafka-go  // Kafka client
-- github.com/gin-gonic/gin       // HTTP framework
-- gorm.io/gorm                   // ORM
-- github.com/golang-jwt/jwt/v5   // JWT
-```
-
-Kafka implementation này đảm bảo **reliability**, **scalability** và **real-time performance** cho hệ thống đặt hàng! 🚀"# kafka" 
+- **Developer**: [Your Name]
+- **Email**: [your-email@example.com]
+- **Project Link**: [https://github.com/your-username/kafka-order-demo](https://github.com/your-username/kafka-order-demo) 
