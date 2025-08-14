@@ -2,14 +2,15 @@ package database
 
 import (
 	"kafka-order-demo/backend/internal/domain/order"
+
 	"gorm.io/gorm"
 )
 
 type GormOrder struct {
-	ID           uint   `gorm:"primaryKey"`
-	UserID       uint   `gorm:"not null"`
+	ID           uint    `gorm:"primaryKey"`
+	UserID       uint    `gorm:"not null"`
 	TotalAmount  float64 `gorm:"not null"`
-	Status       string `gorm:"default:pending"`
+	Status       string  `gorm:"default:pending"`
 	CustomerName string
 	Phone        string
 	Address      string
@@ -50,17 +51,17 @@ func NewGormOrderRepository(db *gorm.DB) *GormOrderRepository {
 
 func (r *GormOrderRepository) Create(ord *order.Order) error {
 	gormOrder := r.toGormOrder(ord)
-	
+
 	err := r.db.Create(gormOrder).Error
 	if err != nil {
 		return err
 	}
-	
+
 	ord.ID = gormOrder.ID
 	for i, item := range gormOrder.OrderItems {
 		ord.OrderItems[i].ID = item.ID
 	}
-	
+
 	return nil
 }
 
@@ -70,7 +71,7 @@ func (r *GormOrderRepository) GetByID(id uint) (*order.Order, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return r.toDomainOrder(&gormOrder), nil
 }
 
@@ -80,12 +81,12 @@ func (r *GormOrderRepository) GetByUserID(userID uint) ([]*order.Order, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	orders := make([]*order.Order, len(gormOrders))
-	for i, go := range gormOrders {
-		orders[i] = r.toDomainOrder(&go)
+	for i, gormOrder := range gormOrders {
+		orders[i] = r.toDomainOrder(&gormOrder)
 	}
-	
+
 	return orders, nil
 }
 
@@ -95,12 +96,12 @@ func (r *GormOrderRepository) GetAll() ([]*order.Order, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	orders := make([]*order.Order, len(gormOrders))
-	for i, go := range gormOrders {
-		orders[i] = r.toDomainOrder(&go)
+	for i, gormOrder := range gormOrders {
+		orders[i] = r.toDomainOrder(&gormOrder)
 	}
-	
+
 	return orders, nil
 }
 
@@ -133,7 +134,7 @@ func (r *GormOrderRepository) toGormOrder(ord *order.Order) *GormOrder {
 			CreatedAt:   item.CreatedAt.Unix(),
 		}
 	}
-	
+
 	return &GormOrder{
 		ID:           ord.ID,
 		UserID:       ord.UserID,
@@ -165,7 +166,7 @@ func (r *GormOrderRepository) toDomainOrder(gormOrder *GormOrder) *order.Order {
 			CreatedAt:   timeFromUnix(gormItem.CreatedAt),
 		}
 	}
-	
+
 	return &order.Order{
 		ID:           gormOrder.ID,
 		UserID:       gormOrder.UserID,
