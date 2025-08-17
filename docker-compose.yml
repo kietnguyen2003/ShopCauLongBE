@@ -1,44 +1,125 @@
 services:
-  # PostgreSQL Database
-  postgres:
+  # Database services
+  auth-db:
     image: postgres:15
-    container_name: order-backend-postgres
+    container_name: auth-db
     environment:
-      POSTGRES_DB: order_demo
+      POSTGRES_DB: auth_db
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d order_demo"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - auth_db_data:/var/lib/postgresql/data
     networks:
-      - backend-network
+      - microservices-network
 
-  # pgAdmin - PostgreSQL Web UI
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: order-backend-pgadmin
+  product-db:
+    image: postgres:15
+    container_name: product-db
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      POSTGRES_DB: product_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
     ports:
-      - "5050:80"
-    depends_on:
-      - postgres
+      - "5434:5432"
+    volumes:
+      - product_db_data:/var/lib/postgresql/data
     networks:
-      - backend-network
+      - microservices-network
+
+  order-db:
+    image: postgres:15
+    container_name: order-db
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5435:5432"
+    volumes:
+      - order_db_data:/var/lib/postgresql/data
+    networks:
+      - microservices-network
+
+  # Microservices
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    environment:
+      PORT: 8081
+      DATABASE_URL: postgres://user:password@auth-db:5432/auth_db?sslmode=disable
+      JWT_SECRET: your-secret-key
+    ports:
+      - "8081:8081"
+    depends_on:
+      - auth-db
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+  product-service:
+    build:
+      context: ./services/product-service
+      dockerfile: Dockerfile
+    container_name: product-service
+    environment:
+      PORT: 8082
+      DATABASE_URL: postgres://user:password@product-db:5432/product_db?sslmode=disable
+    ports:
+      - "8082:8082"
+    depends_on:
+      - product-db
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+  order-service:
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile
+    container_name: order-service
+    environment:
+      PORT: 8083
+      DATABASE_URL: postgres://user:password@order-db:5432/order_db?sslmode=disable
+      PRODUCT_SERVICE_URL: http://product-service:8082
+    ports:
+      - "8083:8083"
+    depends_on:
+      - order-db
+      - product-service
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    environment:
+      PORT: 8080
+      AUTH_SERVICE_URL: http://auth-service:8081
+      PRODUCT_SERVICE_URL: http://product-service:8082
+      ORDER_SERVICE_URL: http://order-service:8083
+      JWT_SECRET: your-secret-key
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-service
+      - product-service
+      - order-service
+    networks:
+      - microservices-network
     restart: unless-stopped
 
 volumes:
-  postgres_data:
-    driver: local
+  auth_db_data:
+  product_db_data:
+  order_db_data:
 
 networks:
-  backend-network:
+  microservices-network:
     driver: bridge

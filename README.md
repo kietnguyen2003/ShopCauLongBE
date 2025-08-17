@@ -1,226 +1,305 @@
-# 🛒 Order Management Demo - Backend
+# 🛒 Order Management Demo - Microservices Architecture
 
-Backend service cho hệ thống quản lý đơn hàng cầu lông.
+Backend microservices cho hệ thống quản lý đơn hàng cầu lông.
 
-## 🏗️ Kiến trúc (Domain Driven Design + Clean Architecture)
+## 🏗️ Kiến trúc Microservices
 
 ```
 backend/
-├── cmd/
-│   └── server/
-│       └── main.go                 # 🚀 Entry point của ứng dụng
-├── internal/
-│   ├── domain/                     # 📋 Domain Layer (Business Logic)
-│   │   ├── auth/
-│   │   │   └── user.go            # User entity và business rules
-│   │   ├── order/
-│   │   │   └── order.go           # Order entity và business logic
-│   │   └── product/
-│   │       └── product.go         # Product entity và validation
-│   ├── application/                # 🔄 Application Layer (Use Cases)
-│   │   ├── auth/
-│   │   │   └── service.go         # Authentication use cases
-│   │   ├── order/
-│   │   │   └── service.go         # Order management use cases
-│   │   └── product/
-│   │       └── service.go         # Product management use cases
-│   ├── infrastructure/             # 🔧 Infrastructure Layer (External)
-│   │   ├── config/
-│   │   │   └── config.go          # Configuration management
-│   │   └── database/
-│   │       ├── database.go        # Database connection & seeding
-│   │       ├── gorm_user_repository.go
-│   │       ├── gorm_product_repository.go
-│   │       └── gorm_order_repository.go
-│   └── interfaces/                 # 🌐 Interface Layer (Presentation)
-│       └── http/
-│           ├── auth_handler.go     # Authentication endpoints
-│           ├── order_handler.go    # Order management endpoints
-│           └── product_handler.go  # Product endpoints
-├── go.mod
-├── go.sum
-├── Dockerfile                      # 🐳 Container configuration
-└── README.md
+├── services/
+│   ├── api-gateway/           # 🚪 API Gateway - Route requests
+│   │   ├── cmd/
+│   │   │   └── main.go
+│   │   ├── internal/
+│   │   │   ├── config/
+│   │   │   ├── handlers/      # Middleware, Auth
+│   │   │   └── proxy/         # Request proxying logic
+│   │   ├── Dockerfile
+│   │   └── go.mod
+│   ├── auth-service/          # 🔐 Authentication Service
+│   │   ├── cmd/
+│   │   │   └── main.go
+│   │   ├── internal/
+│   │   │   ├── config/
+│   │   │   ├── handlers/      # Auth endpoints
+│   │   │   ├── models/        # User model
+│   │   │   ├── repository/    # User repository
+│   │   │   └── service/       # Auth business logic
+│   │   ├── Dockerfile
+│   │   └── go.mod
+│   ├── product-service/       # 📦 Product Service
+│   │   ├── cmd/
+│   │   │   └── main.go
+│   │   ├── internal/
+│   │   │   ├── config/
+│   │   │   ├── handlers/      # Product endpoints
+│   │   │   ├── models/        # Product model
+│   │   │   ├── repository/    # Product repository
+│   │   │   └── service/       # Product business logic
+│   │   ├── Dockerfile
+│   │   └── go.mod
+│   └── order-service/         # 🛍️ Order Service
+│       ├── cmd/
+│       │   └── main.go
+│       ├── internal/
+│       │   ├── config/
+│       │   ├── handlers/      # Order endpoints
+│       │   ├── models/        # Order & OrderItem models
+│       │   ├── repository/    # Order repository
+│       │   └── service/       # Order business logic
+│       ├── Dockerfile
+│       └── go.mod
+└── docker-compose.yml
 ```
 
-## 🎯 Nguyên tắc Clean Architecture
+## 🎯 Microservices Design
 
-### 1. **Domain Layer** 📋
-- **Trách nhiệm**: Business logic, entities, domain rules
-- **Đặc điểm**: Độc lập hoàn toàn, không phụ thuộc layer nào khác
-- **Chứa**: User, Order, Product entities với validation
+### 1. **API Gateway** 🚪 (Port: 8080)
+- **Trách nhiệm**: Route requests, Authentication middleware, CORS
+- **Endpoints**: Proxy tất cả requests đến các services tương ứng
+- **Đặc điểm**: Single entry point, handles auth validation
 
-### 2. **Application Layer** 🔄
-- **Trách nhiệm**: Use cases, orchestration, business workflows  
-- **Đặc điểm**: Sử dụng domain entities, định nghĩa interfaces
-- **Chứa**: Services cho Auth, Order, Product management
+### 2. **Auth Service** 🔐 (Port: 8081)
+- **Trách nhiệm**: User management, JWT authentication
+- **Database**: auth_db (PostgreSQL)
+- **Endpoints**:
+  - `POST /auth/register` - Đăng ký user
+  - `POST /auth/login` - Đăng nhập user
+  - `POST /auth/admin-login` - Đăng nhập admin
+  - `POST /auth/validate` - Validate JWT token
 
-### 3. **Infrastructure Layer** 🔧
-- **Trách nhiệm**: External concerns (database, configuration)
-- **Đặc điểm**: Implement interfaces được định nghĩa trong application layer
-- **Chứa**: Database repos, configuration management
+### 3. **Product Service** 📦 (Port: 8082)
+- **Trách nhiệm**: Product catalog, inventory management
+- **Database**: product_db (PostgreSQL)
+- **Endpoints**:
+  - `GET /api/products` - Lấy danh sách sản phẩm
+  - `GET /api/products/:id` - Lấy chi tiết sản phẩm
+  - `POST /api/products` - Tạo sản phẩm (Admin)
+  - `PUT /api/products/:id/stock` - Cập nhật stock (Admin)
+  - `POST /api/products/:id/decrease-stock` - Giảm stock (Internal)
+  - `DELETE /api/products/:id` - Xóa sản phẩm (Admin)
 
-### 4. **Interface Layer** 🌐
-- **Trách nhiệm**: HTTP endpoints, request/response handling
-- **Đặc điểm**: Chuyển đổi HTTP requests thành application use cases
-- **Chứa**: REST API handlers
+### 4. **Order Service** 🛍️ (Port: 8083)
+- **Trách nhiệm**: Order processing, order management
+- **Database**: order_db (PostgreSQL)
+- **Dependencies**: Calls Product Service for inventory
+- **Endpoints**:
+  - `POST /api/orders` - Tạo đơn hàng
+  - `GET /api/orders` - Lấy đơn hàng của user
+  - `GET /api/orders/:id` - Lấy chi tiết đơn hàng
+  - `PUT /api/orders/:id` - Cập nhật trạng thái (Admin)
+  - `GET /api/admin/orders` - Lấy tất cả đơn hàng (Admin)
 
-## 🚀 Công nghệ sử dụng
+## 🚀 Chạy Microservices
 
-- **Framework**: Gin (HTTP router)
-- **Database**: PostgreSQL + GORM
-- **Authentication**: JWT
-- **Containerization**: Docker
-
-## 📦 Cài đặt & Chạy
-
-### Prerequisites
-- Go 1.21+
-- Docker & Docker Compose
-- PostgreSQL
-
-### Development
+### Option 1: Docker Compose (Recommended)
 ```bash
-# 1. Clone repository
-git clone <repo-url>
-cd backend
-
-# 2. Install dependencies
-go mod tidy
-
-# 3. Run with Docker Compose (recommended)
+# Chạy tất cả microservices với Docker
 docker-compose up -d
 
-# 4. Or run locally
-go run cmd/server/main.go
+# Xem logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
 ```
 
-### Build
+### Option 2: Chạy từng service riêng lẻ
 ```bash
-# Build binary
-go build -o bin/server cmd/server/main.go
+# 1. Start databases
+docker run -d --name auth-db -p 5433:5432 -e POSTGRES_DB=auth_db -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password postgres:15
+docker run -d --name product-db -p 5434:5432 -e POSTGRES_DB=product_db -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password postgres:15
+docker run -d --name order-db -p 5435:5432 -e POSTGRES_DB=order_db -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password postgres:15
 
-# Build Docker image
-docker build -t kafka-order-backend .
+# 2. Start services (in separate terminals)
+cd services/auth-service && go run cmd/main.go
+cd services/product-service && go run cmd/main.go  
+cd services/order-service && go run cmd/main.go
+cd services/api-gateway && go run cmd/main.go
 ```
 
-## 🔧 Cấu hình
+## 🔧 Configuration
 
-Cấu hình thông qua environment variables:
+### Environment Variables
 
+#### API Gateway
 ```bash
 PORT=8080
-DATABASE_URL=postgres://user:password@localhost:5432/order_demo?sslmode=disable
+AUTH_SERVICE_URL=http://localhost:8081
+PRODUCT_SERVICE_URL=http://localhost:8082
+ORDER_SERVICE_URL=http://localhost:8083
 JWT_SECRET=your-secret-key
 ```
 
-## 📡 API Endpoints
-
-### Authentication
-- `POST /auth/register` - Đăng ký user
-- `POST /auth/login` - Đăng nhập user
-- `POST /auth/admin-login` - Đăng nhập admin
-
-### Products
-- `GET /api/products` - Lấy danh sách sản phẩm
-- `GET /api/products/:id` - Lấy chi tiết sản phẩm
-
-### Orders (Protected)
-- `POST /api/orders` - Tạo đơn hàng
-- `GET /api/orders` - Lấy đơn hàng của user
-
-### Admin (Protected + Admin Role)
-- `GET /api/admin/orders` - Lấy tất cả đơn hàng
-- `PUT /api/admin/orders/:id` - Cập nhật trạng thái đơn hàng
-
-## 🏗️ DDD Components
-
-### Domain Entities
-```go
-// User entity với business rules
-type User struct {
-    ID       uint
-    Username string
-    Email    string
-    // Business methods
-    IsValidForLogin() bool
-    UpdatePassword(newPassword string) error
-}
-
-// Order aggregate với business logic
-type Order struct {
-    ID          uint
-    UserID      uint
-    OrderItems  []OrderItem
-    Status      OrderStatus
-    // Business methods
-    AddItem(productID uint, quantity int) error
-    UpdateStatus(status OrderStatus) error
-    CanBeModified() bool
-}
-```
-
-### Repository Interfaces
-```go
-// Định nghĩa trong domain layer
-type UserRepository interface {
-    Create(user *User) error
-    GetByID(id uint) (*User, error)
-    GetByUsername(username string) (*User, error)
-}
-
-// Implement trong infrastructure layer
-type GormUserRepository struct {
-    db *gorm.DB
-}
-```
-
-### Use Cases
-```go
-// Application layer services
-type AuthService struct {
-    userRepo  auth.UserRepository
-    jwtSecret string
-}
-
-func (s *AuthService) Login(req LoginRequest) (*AuthResponse, error) {
-    // Business logic orchestration
-    user, err := s.userRepo.GetByUsername(req.Username)
-    // Validation, JWT generation, etc.
-}
-```
-
-## 🧪 Testing
-
+#### Auth Service
 ```bash
-# Run tests
-go test ./...
-
-# Run tests with coverage
-go test -cover ./...
-
-# Test specific layer
-go test ./internal/domain/...
-go test ./internal/application/...
+PORT=8081
+DATABASE_URL=postgres://user:password@localhost:5433/auth_db?sslmode=disable
+JWT_SECRET=your-secret-key
 ```
 
+#### Product Service
+```bash
+PORT=8082
+DATABASE_URL=postgres://user:password@localhost:5434/product_db?sslmode=disable
+```
+
+#### Order Service
+```bash
+PORT=8083
+DATABASE_URL=postgres://user:password@localhost:5435/order_db?sslmode=disable
+PRODUCT_SERVICE_URL=http://localhost:8082
+```
+
+## 📡 API Usage
+
+### 1. Authentication
+```bash
+# Register
+curl -X POST http://localhost:8080/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"user1","email":"user1@example.com","password":"password123"}'
+
+# Login
+curl -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+```
+
+### 2. Products
+```bash
+# Get products
+curl http://localhost:8080/api/products
+
+# Get product by ID
+curl http://localhost:8080/api/products/1
+```
+
+### 3. Orders (Requires Authentication)
+```bash
+# Create order
+curl -X POST http://localhost:8080/api/orders \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "customer_name": "John Doe",
+    "phone": "0123456789",
+    "address": "123 Main St",
+    "email": "john@example.com",
+    "items": [
+      {"product_id": 1, "quantity": 2}
+    ]
+  }'
+
+# Get user orders
+curl http://localhost:8080/api/orders \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+## 🏗️ Microservices Benefits
+
+### ✅ Advantages
+- **Scalability**: Mỗi service có thể scale độc lập
+- **Technology Diversity**: Có thể dùng tech stack khác nhau cho mỗi service
+- **Fault Isolation**: Lỗi ở 1 service không ảnh hưởng toàn bộ hệ thống
+- **Team Independence**: Các team có thể develop và deploy độc lập
+- **Database per Service**: Mỗi service có database riêng
+
+### 🔄 Service Communication
+- **Synchronous**: HTTP REST API calls giữa các services
+- **API Gateway**: Centralized entry point và authentication
+- **Service Discovery**: Static configuration (có thể nâng cấp lên Consul/Eureka)
+
+## 🧪 Testing Services
+
+### Health Check
+```bash
+# Check all services
+curl http://localhost:8080/api/products  # Via Gateway
+curl http://localhost:8081/auth/login    # Direct to Auth Service
+curl http://localhost:8082/api/products  # Direct to Product Service
+curl http://localhost:8083/api/orders    # Direct to Order Service (needs auth)
+```
+
+### Load Testing
+```bash
+# Install apache bench
+apt-get install apache2-utils
+
+# Test API Gateway
+ab -n 1000 -c 10 http://localhost:8080/api/products
+```
 
 ## 🐛 Troubleshooting
 
-### Build Issues
+### Service Communication Issues
 ```bash
-# Clean module cache
-go clean -modcache
-go mod download
-go mod tidy
+# Check network connectivity
+docker network ls
+docker network inspect backend_microservices-network
+
+# Check service logs
+docker-compose logs auth-service
+docker-compose logs product-service
+docker-compose logs order-service
+docker-compose logs api-gateway
 ```
 
 ### Database Issues
 ```bash
-# Reset database
-docker-compose down -v
-docker-compose up -d
+# Connect to specific database
+docker exec -it auth-db psql -U user -d auth_db
+docker exec -it product-db psql -U user -d product_db  
+docker exec -it order-db psql -U user -d order_db
 ```
+
+### Port Conflicts
+```bash
+# Check port usage
+netstat -tulpn | grep :8080
+netstat -tulpn | grep :8081
+netstat -tulpn | grep :8082
+netstat -tulpn | grep :8083
+```
+
+## 🔄 Migration from Monolith
+
+### Data Migration
+1. Export data từ monolith database
+2. Import vào các service databases tương ứng
+3. Update foreign key references
+
+### Gradual Migration Strategy
+1. **Strangler Fig Pattern**: Gradually replace monolith endpoints
+2. **Database per Service**: Migrate data từng domain
+3. **API Versioning**: Maintain backward compatibility
+
+## 📈 Monitoring & Observability
+
+### Metrics
+- Service health endpoints
+- Database connection status
+- Request/response times
+- Error rates
+
+### Logging
+- Structured logging với correlation IDs
+- Centralized log aggregation (ELK stack)
+- Distributed tracing
+
+## 🔒 Security
+
+### Authentication Flow
+1. Client → API Gateway → Auth Service (login)
+2. Auth Service returns JWT token
+3. Client → API Gateway (with JWT) → Protected Services
+4. API Gateway validates JWT before forwarding
+
+### Security Best Practices
+- JWT với expiration time
+- HTTPS for all external communication
+- Service-to-service authentication (nếu cần)
+- Input validation tại mỗi service
 
 ## 📄 License
 
@@ -229,13 +308,13 @@ MIT License - xem file LICENSE để biết thêm chi tiết.
 ## 🤝 Contributing
 
 1. Fork the project
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+2. Create your feature branch (`git checkout -b feature/microservice-feature`)
+3. Commit your changes (`git commit -m 'Add microservice feature'`)
+4. Push to the branch (`git push origin feature/microservice-feature`)
 5. Open a Pull Request
 
 ## 📞 Liên hệ
 
 - **Developer**: [Your Name]
 - **Email**: [your-email@example.com]
-- **Project Link**: [https://github.com/your-username/kafka-order-demo](https://github.com/your-username/kafka-order-demo) 
+- **Project Link**: [https://github.com/your-username/kafka-order-demo](https://github.com/your-username/kafka-order-demo)

@@ -7,7 +7,11 @@
       "Bash(docker-compose down:*)",
       "Bash(go run:*)",
       "Bash(curl:*)",
-      "Bash(docker exec:*)"
+      "Bash(docker exec:*)",
+      "Bash(mkdir:*)",
+      "Bash(chmod:*)",
+      "Bash(mv:*)",
+      "Bash(docker-compose:*)"
     ],
     "deny": [],
     "ask": []

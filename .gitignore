@@ -87,3 +87,7 @@ debug
 config/local.yaml
 config/development.yaml
 config/production.yaml
+
+# Claude Code files
+claude/
+.claude/
