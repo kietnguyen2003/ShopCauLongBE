@@ -13,7 +13,7 @@ type Config struct {
 func Load() *Config {
 	return &Config{
 		Port:        getEnv("PORT", "8080"),
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://user:password@localhost:5432/kafka_demo?sslmode=disable"),
+		DatabaseURL: getEnv("DATABASE_URL", "postgres://user:password@localhost:5432/order_demo?sslmode=disable"),
 		JWTSecret:   getEnv("JWT_SECRET", "c30458d674115284b466558488a3d413"),
 	}
 }

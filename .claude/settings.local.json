@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(rm:*)",
-      "Bash(go mod:*)"
+      "Bash(go mod:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(go run:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
