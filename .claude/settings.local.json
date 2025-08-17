@@ -6,7 +6,8 @@
       "Bash(docker-compose up:*)",
       "Bash(docker-compose down:*)",
       "Bash(go run:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(docker exec:*)"
     ],
     "deny": [],
     "ask": []

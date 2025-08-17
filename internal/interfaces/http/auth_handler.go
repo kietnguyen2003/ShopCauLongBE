@@ -2,7 +2,6 @@ package http
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 
 	"kafka-order-demo/backend/internal/application/auth"
@@ -97,8 +96,8 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		userID, _ := strconv.Atoi(claims["user_id"].(string))
-		c.Set("user_id", uint(userID))
+		userIDFloat := claims["user_id"].(float64)
+		c.Set("user_id", uint(userIDFloat))
 		c.Set("is_admin", claims["is_admin"].(bool))
 
 		c.Next()
