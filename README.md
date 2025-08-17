@@ -1,6 +1,6 @@
-# 🛒 Kafka Order Demo - Backend
+# 🛒 Order Management Demo - Backend
 
-Backend service cho hệ thống quản lý đơn hàng cầu lông với Kafka event streaming và WebSocket real-time.
+Backend service cho hệ thống quản lý đơn hàng cầu lông.
 
 ## 🏗️ Kiến trúc (Domain Driven Design + Clean Architecture)
 
@@ -27,15 +27,11 @@ backend/
 │   ├── infrastructure/             # 🔧 Infrastructure Layer (External)
 │   │   ├── config/
 │   │   │   └── config.go          # Configuration management
-│   │   ├── database/
-│   │   │   ├── database.go        # Database connection & seeding
-│   │   │   ├── gorm_user_repository.go
-│   │   │   ├── gorm_product_repository.go
-│   │   │   └── gorm_order_repository.go
-│   │   ├── kafka/
-│   │   │   └── event_bus.go       # Kafka event publishing
-│   │   └── websocket/
-│   │       └── hub.go             # WebSocket management
+│   │   └── database/
+│   │       ├── database.go        # Database connection & seeding
+│   │       ├── gorm_user_repository.go
+│   │       ├── gorm_product_repository.go
+│   │       └── gorm_order_repository.go
 │   └── interfaces/                 # 🌐 Interface Layer (Presentation)
 │       └── http/
 │           ├── auth_handler.go     # Authentication endpoints
@@ -60,9 +56,9 @@ backend/
 - **Chứa**: Services cho Auth, Order, Product management
 
 ### 3. **Infrastructure Layer** 🔧
-- **Trách nhiệm**: External concerns (database, messaging, websockets)
+- **Trách nhiệm**: External concerns (database, configuration)
 - **Đặc điểm**: Implement interfaces được định nghĩa trong application layer
-- **Chứa**: Database repos, Kafka event bus, WebSocket hub
+- **Chứa**: Database repos, configuration management
 
 ### 4. **Interface Layer** 🌐
 - **Trách nhiệm**: HTTP endpoints, request/response handling
@@ -73,8 +69,6 @@ backend/
 
 - **Framework**: Gin (HTTP router)
 - **Database**: PostgreSQL + GORM
-- **Message Queue**: Apache Kafka (IBM Sarama)
-- **Real-time**: WebSocket (Gorilla)
 - **Authentication**: JWT
 - **Containerization**: Docker
 
@@ -84,7 +78,6 @@ backend/
 - Go 1.21+
 - Docker & Docker Compose
 - PostgreSQL
-- Apache Kafka
 
 ### Development
 ```bash
@@ -117,9 +110,8 @@ Cấu hình thông qua environment variables:
 
 ```bash
 PORT=8080
-DATABASE_URL=postgres://user:password@localhost:5432/kafka_demo?sslmode=disable
+DATABASE_URL=postgres://user:password@localhost:5432/order_demo?sslmode=disable
 JWT_SECRET=your-secret-key
-KAFKA_BROKERS=localhost:9092
 ```
 
 ## 📡 API Endpoints
@@ -140,15 +132,6 @@ KAFKA_BROKERS=localhost:9092
 ### Admin (Protected + Admin Role)
 - `GET /api/admin/orders` - Lấy tất cả đơn hàng
 - `PUT /api/admin/orders/:id` - Cập nhật trạng thái đơn hàng
-
-### WebSocket
-- `GET /ws/user/:userID` - WebSocket cho user
-- `GET /ws/admin` - WebSocket cho admin
-
-## 🎯 Event Flow
-
-1. **Tạo đơn hàng** → Kafka event `order-created` → WebSocket notification cho admin
-2. **Cập nhật đơn hàng** → Kafka event `order-updated` → WebSocket notification cho user
 
 ## 🏗️ DDD Components
 
@@ -221,12 +204,6 @@ go test ./internal/domain/...
 go test ./internal/application/...
 ```
 
-## 🔄 Kafka Event Flow
-
-```
-Order Created → Kafka Producer → order-created topic → Consumer → WebSocket Admin
-Order Updated → Kafka Producer → order-updated topic → Consumer → WebSocket User
-```
 
 ## 🐛 Troubleshooting
 

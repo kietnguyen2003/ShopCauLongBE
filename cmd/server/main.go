@@ -2,15 +2,12 @@ package main
 
 import (
 	"log"
-	"strings"
 
 	"kafka-order-demo/backend/internal/application/auth"
 	"kafka-order-demo/backend/internal/application/order"
 	"kafka-order-demo/backend/internal/application/product"
 	"kafka-order-demo/backend/internal/infrastructure/config"
 	"kafka-order-demo/backend/internal/infrastructure/database"
-	"kafka-order-demo/backend/internal/infrastructure/kafka"
-	"kafka-order-demo/backend/internal/infrastructure/websocket"
 	httpHandlers "kafka-order-demo/backend/internal/interfaces/http"
 
 	"github.com/gin-contrib/cors"
@@ -29,27 +26,15 @@ func main() {
 	productRepo := database.NewGormProductRepository(db)
 	orderRepo := database.NewGormOrderRepository(db)
 
-	// Initialize WebSocket hub
-	wsHub := websocket.NewHub()
-	go wsHub.Run()
-
-	// Initialize event bus (Kafka + WebSocket)
-	brokers := strings.Split(cfg.KafkaBrokers, ",")
-	eventBus, err := kafka.NewEventBus(brokers, wsHub)
-	if err != nil {
-		log.Fatal("Failed to initialize event bus:", err)
-	}
-
 	// Initialize services
 	authService := auth.NewService(userRepo, cfg.JWTSecret)
 	productService := product.NewService(productRepo)
-	orderService := order.NewService(orderRepo, productRepo, eventBus)
+	orderService := order.NewService(orderRepo, productRepo)
 
 	// Initialize handlers
 	authHandler := httpHandlers.NewAuthHandler(authService, cfg.JWTSecret)
 	productHandler := httpHandlers.NewProductHandler(productService)
 	orderHandler := httpHandlers.NewOrderHandler(orderService)
-	wsHandler := websocket.NewHandler(wsHub)
 
 	// Setup Gin router
 	r := gin.Default()
@@ -63,13 +48,13 @@ func main() {
 	}))
 
 	// Setup routes
-	setupRoutes(r, authHandler, orderHandler, productHandler, wsHandler)
+	setupRoutes(r, authHandler, orderHandler, productHandler)
 
 	log.Printf("Server starting on port %s", cfg.Port)
 	log.Fatal(r.Run(":" + cfg.Port))
 }
 
-func setupRoutes(r *gin.Engine, authHandler *httpHandlers.AuthHandler, orderHandler *httpHandlers.OrderHandler, productHandler *httpHandlers.ProductHandler, wsHandler *websocket.Handler) {
+func setupRoutes(r *gin.Engine, authHandler *httpHandlers.AuthHandler, orderHandler *httpHandlers.OrderHandler, productHandler *httpHandlers.ProductHandler) {
 	// Auth routes
 	auth := r.Group("/auth")
 	{
@@ -77,10 +62,6 @@ func setupRoutes(r *gin.Engine, authHandler *httpHandlers.AuthHandler, orderHand
 		auth.POST("/login", authHandler.Login)
 		auth.POST("/admin-login", authHandler.AdminLogin)
 	}
-
-	// WebSocket routes
-	r.GET("/ws/user/:userID", wsHandler.HandleUserConnection)
-	r.GET("/ws/admin", wsHandler.HandleAdminConnection)
 
 	// Public routes
 	r.GET("/api/products", productHandler.GetProducts)

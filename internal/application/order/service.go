@@ -8,12 +8,6 @@ import (
 type Service struct {
 	orderRepo   order.OrderRepository
 	productRepo product.ProductRepository
-	eventBus    EventBus
-}
-
-type EventBus interface {
-	PublishOrderCreated(order *order.Order) error
-	PublishOrderUpdated(order *order.Order) error
 }
 
 type CreateOrderRequest struct {
@@ -30,11 +24,10 @@ type CreateOrderItemRequest struct {
 	Quantity  int  `json:"quantity"`
 }
 
-func NewService(orderRepo order.OrderRepository, productRepo product.ProductRepository, eventBus EventBus) *Service {
+func NewService(orderRepo order.OrderRepository, productRepo product.ProductRepository) *Service {
 	return &Service{
 		orderRepo:   orderRepo,
 		productRepo: productRepo,
-		eventBus:    eventBus,
 	}
 }
 
@@ -79,11 +72,6 @@ func (s *Service) CreateOrder(req CreateOrderRequest) (*order.Order, error) {
 		return nil, err
 	}
 
-	// Publish event
-	if s.eventBus != nil {
-		s.eventBus.PublishOrderCreated(ord)
-	}
-
 	return ord, nil
 }
 
@@ -113,11 +101,6 @@ func (s *Service) UpdateOrderStatus(id uint, status order.OrderStatus) error {
 	err = s.orderRepo.Update(ord)
 	if err != nil {
 		return err
-	}
-
-	// Publish event
-	if s.eventBus != nil {
-		s.eventBus.PublishOrderUpdated(ord)
 	}
 
 	return nil
