@@ -2,6 +2,7 @@ package database
 
 import (
 	"kafka-order-demo/backend/internal/domain/auth"
+
 	"gorm.io/gorm"
 )
 
@@ -36,12 +37,12 @@ func (r *GormUserRepository) Create(user *auth.User) error {
 		CreatedAt: user.CreatedAt.Unix(),
 		UpdatedAt: user.UpdatedAt.Unix(),
 	}
-	
+
 	err := r.db.Create(gormUser).Error
 	if err != nil {
 		return err
 	}
-	
+
 	user.ID = gormUser.ID
 	return nil
 }
@@ -52,7 +53,7 @@ func (r *GormUserRepository) GetByID(id uint) (*auth.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return r.toDomainUser(&gormUser), nil
 }
 
@@ -62,7 +63,7 @@ func (r *GormUserRepository) GetByUsername(username string) (*auth.User, error) 
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return r.toDomainUser(&gormUser), nil
 }
 
@@ -72,7 +73,7 @@ func (r *GormUserRepository) GetByEmail(email string) (*auth.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return r.toDomainUser(&gormUser), nil
 }
 
@@ -86,7 +87,7 @@ func (r *GormUserRepository) Update(user *auth.User) error {
 		CreatedAt: user.CreatedAt.Unix(),
 		UpdatedAt: user.UpdatedAt.Unix(),
 	}
-	
+
 	return r.db.Save(gormUser).Error
 }
 
