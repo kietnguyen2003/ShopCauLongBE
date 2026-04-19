@@ -1,13 +1,14 @@
 package database
 
 import (
-	"kafka-order-demo/backend/internal/domain/product"
 	"gorm.io/gorm"
+	appProduct "kafka-order-demo/backend/internal/application/product"
+	"kafka-order-demo/backend/internal/domain/product"
 )
 
 type GormProduct struct {
-	ID          uint    `gorm:"primaryKey"`
-	Name        string  `gorm:"not null"`
+	ID          uint   `gorm:"primaryKey"`
+	Name        string `gorm:"not null"`
 	Description string
 	Price       float64 `gorm:"not null"`
 	Stock       int     `gorm:"default:0"`
@@ -29,6 +30,8 @@ func NewGormProductRepository(db *gorm.DB) *GormProductRepository {
 	return &GormProductRepository{db: db}
 }
 
+var _ appProduct.ProductRepository = (*GormProductRepository)(nil)
+
 func (r *GormProductRepository) Create(prod *product.Product) error {
 	gormProduct := &GormProduct{
 		Name:        prod.Name,
@@ -40,12 +43,12 @@ func (r *GormProductRepository) Create(prod *product.Product) error {
 		CreatedAt:   prod.CreatedAt.Unix(),
 		UpdatedAt:   prod.UpdatedAt.Unix(),
 	}
-	
+
 	err := r.db.Create(gormProduct).Error
 	if err != nil {
 		return err
 	}
-	
+
 	prod.ID = gormProduct.ID
 	return nil
 }
@@ -56,7 +59,7 @@ func (r *GormProductRepository) GetByID(id uint) (*product.Product, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return r.toDomainProduct(&gormProduct), nil
 }
 
@@ -66,12 +69,12 @@ func (r *GormProductRepository) GetAll() ([]*product.Product, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	products := make([]*product.Product, len(gormProducts))
 	for i, gp := range gormProducts {
 		products[i] = r.toDomainProduct(&gp)
 	}
-	
+
 	return products, nil
 }
 
@@ -81,12 +84,12 @@ func (r *GormProductRepository) GetByCategory(category string) ([]*product.Produ
 	if err != nil {
 		return nil, err
 	}
-	
+
 	products := make([]*product.Product, len(gormProducts))
 	for i, gp := range gormProducts {
 		products[i] = r.toDomainProduct(&gp)
 	}
-	
+
 	return products, nil
 }
 
@@ -102,7 +105,7 @@ func (r *GormProductRepository) Update(prod *product.Product) error {
 		CreatedAt:   prod.CreatedAt.Unix(),
 		UpdatedAt:   prod.UpdatedAt.Unix(),
 	}
-	
+
 	return r.db.Save(gormProduct).Error
 }
 

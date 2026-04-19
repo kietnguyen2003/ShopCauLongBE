@@ -2,38 +2,21 @@ package auth
 
 import (
 	"errors"
-	"time"
-	
-	"kafka-order-demo/backend/internal/domain/auth"
-	"golang.org/x/crypto/bcrypt"
-	"github.com/golang-jwt/jwt/v5"
+
+	domainAuth "kafka-order-demo/backend/internal/domain/auth"
 )
 
 type Service struct {
-	userRepo  auth.UserRepository
-	jwtSecret string
+	userRepo       UserRepository
+	passwordHasher PasswordHasher
+	tokenProvider  TokenProvider
 }
 
-type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-type RegisterRequest struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-type AuthResponse struct {
-	Token string    `json:"token"`
-	User  *auth.User `json:"user"`
-}
-
-func NewService(userRepo auth.UserRepository, jwtSecret string) *Service {
+func NewService(userRepo UserRepository, passwordHasher PasswordHasher, tokenProvider TokenProvider) *Service {
 	return &Service{
-		userRepo:  userRepo,
-		jwtSecret: jwtSecret,
+		userRepo:       userRepo,
+		passwordHasher: passwordHasher,
+		tokenProvider:  tokenProvider,
 	}
 }
 
@@ -50,13 +33,13 @@ func (s *Service) Register(req RegisterRequest) (*AuthResponse, error) {
 	}
 
 	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hashedPassword, err := s.passwordHasher.Hash(req.Password)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create user
-	user, err := auth.NewUser(req.Username, req.Email, string(hashedPassword), false)
+	user, err := domainAuth.NewUser(req.Username, req.Email, hashedPassword, false)
 	if err != nil {
 		return nil, err
 	}
@@ -67,14 +50,14 @@ func (s *Service) Register(req RegisterRequest) (*AuthResponse, error) {
 	}
 
 	// Generate token
-	token, err := s.generateToken(user.ID, user.IsAdmin)
+	token, err := s.tokenProvider.Generate(user.ID, user.IsAdmin)
 	if err != nil {
 		return nil, err
 	}
 
 	return &AuthResponse{
 		Token: token,
-		User:  user,
+		User:  toUserResponse(user),
 	}, nil
 }
 
@@ -84,19 +67,19 @@ func (s *Service) Login(req LoginRequest) (*AuthResponse, error) {
 		return nil, errors.New("invalid credentials")
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
+	err = s.passwordHasher.Compare(user.Password, req.Password)
 	if err != nil {
 		return nil, errors.New("invalid credentials")
 	}
 
-	token, err := s.generateToken(user.ID, user.IsAdmin)
+	token, err := s.tokenProvider.Generate(user.ID, user.IsAdmin)
 	if err != nil {
 		return nil, err
 	}
 
 	return &AuthResponse{
 		Token: token,
-		User:  user,
+		User:  toUserResponse(user),
 	}, nil
 }
 
@@ -110,29 +93,18 @@ func (s *Service) AdminLogin(req LoginRequest) (*AuthResponse, error) {
 		return nil, errors.New("access denied")
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
+	err = s.passwordHasher.Compare(user.Password, req.Password)
 	if err != nil {
 		return nil, errors.New("invalid credentials")
 	}
 
-	token, err := s.generateToken(user.ID, user.IsAdmin)
+	token, err := s.tokenProvider.Generate(user.ID, user.IsAdmin)
 	if err != nil {
 		return nil, err
 	}
 
 	return &AuthResponse{
 		Token: token,
-		User:  user,
+		User:  toUserResponse(user),
 	}, nil
-}
-
-func (s *Service) generateToken(userID uint, isAdmin bool) (string, error) {
-	claims := jwt.MapClaims{
-		"user_id":  userID,
-		"is_admin": isAdmin,
-		"exp":      time.Now().Add(time.Hour * 24).Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(s.jwtSecret))
 }

@@ -1,8 +1,8 @@
 package auth
 
 import (
-	"time"
 	"errors"
+	"time"
 )
 
 // User represents the user domain entity
@@ -14,16 +14,6 @@ type User struct {
 	IsAdmin   bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
-}
-
-// UserRepository defines the interface for user data access
-type UserRepository interface {
-	Create(user *User) error
-	GetByID(id uint) (*User, error)
-	GetByUsername(username string) (*User, error)
-	GetByEmail(email string) (*User, error)
-	Update(user *User) error
-	Delete(id uint) error
 }
 
 // NewUser creates a new user with validation

@@ -1,6 +1,7 @@
 package database
 
 import (
+	appOrder "kafka-order-demo/backend/internal/application/order"
 	"kafka-order-demo/backend/internal/domain/order"
 
 	"gorm.io/gorm"
@@ -48,6 +49,8 @@ type GormOrderRepository struct {
 func NewGormOrderRepository(db *gorm.DB) *GormOrderRepository {
 	return &GormOrderRepository{db: db}
 }
+
+var _ appOrder.OrderRepository = (*GormOrderRepository)(nil)
 
 func (r *GormOrderRepository) Create(ord *order.Order) error {
 	gormOrder := r.toGormOrder(ord)
@@ -125,12 +128,12 @@ func (r *GormOrderRepository) toGormOrder(ord *order.Order) *GormOrder {
 			ID:          item.ID,
 			OrderID:     item.OrderID,
 			ProductID:   item.ProductID,
-			Name:        item.Name,
-			Price:       item.Price,
+			Name:        item.ProductSnapshot.Name,
+			Price:       item.ProductSnapshot.Price,
 			Quantity:    item.Quantity,
-			Image:       item.Image,
-			Category:    item.Category,
-			Description: item.Description,
+			Image:       item.ProductSnapshot.Image,
+			Category:    item.ProductSnapshot.Category,
+			Description: item.ProductSnapshot.Description,
 			CreatedAt:   item.CreatedAt.Unix(),
 		}
 	}
@@ -154,16 +157,18 @@ func (r *GormOrderRepository) toDomainOrder(gormOrder *GormOrder) *order.Order {
 	items := make([]order.OrderItem, len(gormOrder.OrderItems))
 	for i, gormItem := range gormOrder.OrderItems {
 		items[i] = order.OrderItem{
-			ID:          gormItem.ID,
-			OrderID:     gormItem.OrderID,
-			ProductID:   gormItem.ProductID,
-			Name:        gormItem.Name,
-			Price:       gormItem.Price,
-			Quantity:    gormItem.Quantity,
-			Image:       gormItem.Image,
-			Category:    gormItem.Category,
-			Description: gormItem.Description,
-			CreatedAt:   timeFromUnix(gormItem.CreatedAt),
+			ID:        gormItem.ID,
+			OrderID:   gormItem.OrderID,
+			ProductID: gormItem.ProductID,
+			ProductSnapshot: order.ProductSnapshot{
+				Name:        gormItem.Name,
+				Price:       gormItem.Price,
+				Image:       gormItem.Image,
+				Category:    gormItem.Category,
+				Description: gormItem.Description,
+			},
+			Quantity:  gormItem.Quantity,
+			CreatedAt: timeFromUnix(gormItem.CreatedAt),
 		}
 	}
 

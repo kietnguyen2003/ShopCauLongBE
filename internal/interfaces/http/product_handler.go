@@ -4,15 +4,15 @@ import (
 	"net/http"
 	"strconv"
 
-	"kafka-order-demo/backend/internal/application/product"
 	"github.com/gin-gonic/gin"
+	appProduct "kafka-order-demo/backend/internal/application/product"
 )
 
 type ProductHandler struct {
-	productService *product.Service
+	productService *appProduct.Service
 }
 
-func NewProductHandler(productService *product.Service) *ProductHandler {
+func NewProductHandler(productService *appProduct.Service) *ProductHandler {
 	return &ProductHandler{
 		productService: productService,
 	}
@@ -25,7 +25,7 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, products)
+	c.JSON(http.StatusOK, toProductHTTPResponses(products))
 }
 
 func (h *ProductHandler) GetProductByID(c *gin.Context) {
@@ -42,5 +42,5 @@ func (h *ProductHandler) GetProductByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, product)
+	c.JSON(http.StatusOK, toProductHTTPResponse(*product))
 }

@@ -14,33 +14,48 @@ backend/
 │   │   ├── auth/
 │   │   │   └── user.go            # User entity và business rules
 │   │   ├── order/
-│   │   │   └── order.go           # Order entity và business logic
+│   │   │   ├── order.go           # Order aggregate, status rules, snapshot invariants
+│   │   │   └── order_test.go      # Domain tests cho order invariants
 │   │   └── product/
 │   │       └── product.go         # Product entity và validation
 │   ├── application/                # 🔄 Application Layer (Use Cases)
 │   │   ├── auth/
+│   │   │   ├── dto.go             # Input/output models cho auth use cases
+│   │   │   ├── ports.go           # Repository + security ports
 │   │   │   └── service.go         # Authentication use cases
 │   │   ├── order/
+│   │   │   ├── dto.go             # Input/output models cho order use cases
+│   │   │   ├── ports.go           # Repository ports
 │   │   │   └── service.go         # Order management use cases
 │   │   └── product/
+│   │       ├── dto.go             # Input/output models cho product use cases
+│   │       ├── ports.go           # Repository ports
 │   │       └── service.go         # Product management use cases
 │   ├── infrastructure/             # 🔧 Infrastructure Layer (External)
 │   │   ├── config/
 │   │   │   └── config.go          # Configuration management
-│   │   └── database/
-│   │       ├── database.go        # Database connection & seeding
+│   │   ├── database/
+│   │       ├── connection.go      # Database connection factory
+│   │       ├── migrations.go      # Auto migration runner
+│   │       ├── seed.go            # Initial seed data
 │   │       ├── gorm_user_repository.go
 │   │       ├── gorm_product_repository.go
 │   │       └── gorm_order_repository.go
+│   │   └── security/
+│   │       ├── bcrypt_hasher.go   # Password hashing implementation
+│   │       └── jwt_provider.go    # JWT generate/validate implementation
 │   └── interfaces/                 # 🌐 Interface Layer (Presentation)
 │       └── http/
 │           ├── auth_handler.go     # Authentication endpoints
+│           ├── auth_models.go      # HTTP models cho auth requests/responses
 │           ├── order_handler.go    # Order management endpoints
-│           └── product_handler.go  # Product endpoints
+│           ├── order_models.go     # HTTP models cho order requests/responses
+│           ├── product_handler.go  # Product endpoints
+│           └── product_models.go   # HTTP models cho product responses
 ├── go.mod
 ├── go.sum
 ├── Dockerfile                      # 🐳 Container configuration
-└── README.md
+└── README_DDD_CLEAN.md
 ```
 
 ## 🎯 Nguyên tắc Clean Architecture
@@ -52,18 +67,18 @@ backend/
 
 ### 2. **Application Layer** 🔄
 - **Trách nhiệm**: Use cases, orchestration, business workflows  
-- **Đặc điểm**: Sử dụng domain entities, định nghĩa interfaces
-- **Chứa**: Services cho Auth, Order, Product management
+- **Đặc điểm**: Sử dụng domain entities, định nghĩa ports/interfaces cho repository và security services
+- **Chứa**: Services, DTOs, ports cho Auth, Order, Product management
 
 ### 3. **Infrastructure Layer** 🔧
 - **Trách nhiệm**: External concerns (database, configuration)
 - **Đặc điểm**: Implement interfaces được định nghĩa trong application layer
-- **Chứa**: Database repos, configuration management
+- **Chứa**: Database repos, database bootstrap utilities, configuration management, password hashing, JWT provider
 
 ### 4. **Interface Layer** 🌐
 - **Trách nhiệm**: HTTP endpoints, request/response handling
-- **Đặc điểm**: Chuyển đổi HTTP requests thành application use cases
-- **Chứa**: REST API handlers
+- **Đặc điểm**: Chuyển đổi HTTP requests thành application use cases và map output models thành JSON response
+- **Chứa**: REST API handlers và HTTP transport models
 
 ## 🚀 Công nghệ sử dụng
 
@@ -149,20 +164,31 @@ type User struct {
 
 // Order aggregate với business logic
 type Order struct {
-    ID          uint
-    UserID      uint
-    OrderItems  []OrderItem
-    Status      OrderStatus
+    ID           uint
+    UserID       uint
+    OrderItems   []OrderItem
+    Status       OrderStatus
+    TotalAmount  float64
     // Business methods
-    AddItem(productID uint, quantity int) error
+    AddItem(productID uint, snapshot ProductSnapshot, quantity int) error
     UpdateStatus(status OrderStatus) error
     CanBeModified() bool
+    ValidateForCreation() error
+}
+
+// ProductSnapshot lưu dữ liệu sản phẩm tại thời điểm mua
+type ProductSnapshot struct {
+    Name        string
+    Price       float64
+    Image       string
+    Category    string
+    Description string
 }
 ```
 
 ### Repository Interfaces
 ```go
-// Định nghĩa trong domain layer
+// Định nghĩa trong application layer
 type UserRepository interface {
     Create(user *User) error
     GetByID(id uint) (*User, error)
@@ -179,14 +205,36 @@ type GormUserRepository struct {
 ```go
 // Application layer services
 type AuthService struct {
-    userRepo  auth.UserRepository
-    jwtSecret string
+    userRepo       UserRepository
+    passwordHasher PasswordHasher
+    tokenProvider  TokenProvider
 }
 
 func (s *AuthService) Login(req LoginRequest) (*AuthResponse, error) {
     // Business logic orchestration
     user, err := s.userRepo.GetByUsername(req.Username)
-    // Validation, JWT generation, etc.
+    // Password validation qua PasswordHasher
+    // Token generation qua TokenProvider
+}
+```
+
+### Security Ports & Adapters
+```go
+// Application ports
+type PasswordHasher interface {
+    Hash(password string) (string, error)
+    Compare(hashedPassword, password string) error
+}
+
+type TokenProvider interface {
+    Generate(userID uint, isAdmin bool) (string, error)
+    Validate(token string) (*TokenClaims, error)
+}
+
+// Infrastructure adapters
+type BcryptHasher struct{}
+type JWTProvider struct {
+    secret string
 }
 ```
 

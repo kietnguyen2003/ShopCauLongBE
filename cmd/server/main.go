@@ -8,6 +8,7 @@ import (
 	"kafka-order-demo/backend/internal/application/product"
 	"kafka-order-demo/backend/internal/infrastructure/config"
 	"kafka-order-demo/backend/internal/infrastructure/database"
+	"kafka-order-demo/backend/internal/infrastructure/security"
 	httpHandlers "kafka-order-demo/backend/internal/interfaces/http"
 
 	"github.com/gin-contrib/cors"
@@ -18,21 +19,34 @@ func main() {
 	// Load configuration
 	cfg := config.Load()
 
-	// Initialize database
-	db := database.NewConnection(cfg.DatabaseURL)
+	// Initialize database infrastructure
+	db, err := database.Connect(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+
+	if err := database.AutoMigrate(db); err != nil {
+		log.Fatal("Failed to migrate database:", err)
+	}
+
+	if err := database.SeedInitialData(db); err != nil {
+		log.Fatal("Failed to seed database:", err)
+	}
 
 	// Initialize repositories
 	userRepo := database.NewGormUserRepository(db)
 	productRepo := database.NewGormProductRepository(db)
 	orderRepo := database.NewGormOrderRepository(db)
+	passwordHasher := security.NewBcryptHasher()
+	tokenProvider := security.NewJWTProvider(cfg.JWTSecret)
 
 	// Initialize services
-	authService := auth.NewService(userRepo, cfg.JWTSecret)
+	authService := auth.NewService(userRepo, passwordHasher, tokenProvider)
 	productService := product.NewService(productRepo)
 	orderService := order.NewService(orderRepo, productRepo)
 
 	// Initialize handlers
-	authHandler := httpHandlers.NewAuthHandler(authService, cfg.JWTSecret)
+	authHandler := httpHandlers.NewAuthHandler(authService, tokenProvider)
 	productHandler := httpHandlers.NewProductHandler(productService)
 	orderHandler := httpHandlers.NewOrderHandler(orderService)
 

@@ -1,8 +1,8 @@
 package product
 
 import (
-	"time"
 	"errors"
+	"time"
 )
 
 // Product represents the product domain entity
@@ -16,17 +16,6 @@ type Product struct {
 	Category    string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
-}
-
-// ProductRepository defines the interface for product data access
-type ProductRepository interface {
-	Create(product *Product) error
-	GetByID(id uint) (*Product, error)
-	GetAll() ([]*Product, error)
-	GetByCategory(category string) ([]*Product, error)
-	Update(product *Product) error
-	Delete(id uint) error
-	UpdateStock(id uint, stock int) error
 }
 
 // NewProduct creates a new product with validation
@@ -55,7 +44,7 @@ func NewProduct(name, description string, price float64, stock int, image, categ
 
 // IsAvailable checks if product is available in stock
 func (p *Product) IsAvailable(quantity int) bool {
-	return p.Stock >= quantity
+	return quantity > 0 && p.Stock >= quantity
 }
 
 // UpdateStock updates product stock
@@ -70,6 +59,9 @@ func (p *Product) UpdateStock(newStock int) error {
 
 // DecreaseStock decreases product stock by quantity
 func (p *Product) DecreaseStock(quantity int) error {
+	if quantity <= 0 {
+		return errors.New("quantity must be greater than 0")
+	}
 	if !p.IsAvailable(quantity) {
 		return errors.New("insufficient stock")
 	}

@@ -1,6 +1,7 @@
 package database
 
 import (
+	appAuth "kafka-order-demo/backend/internal/application/auth"
 	"kafka-order-demo/backend/internal/domain/auth"
 
 	"gorm.io/gorm"
@@ -27,6 +28,8 @@ type GormUserRepository struct {
 func NewGormUserRepository(db *gorm.DB) *GormUserRepository {
 	return &GormUserRepository{db: db}
 }
+
+var _ appAuth.UserRepository = (*GormUserRepository)(nil)
 
 func (r *GormUserRepository) Create(user *auth.User) error {
 	gormUser := &GormUser{

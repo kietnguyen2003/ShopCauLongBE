@@ -1,8 +1,18 @@
 package order
 
 import (
-	"time"
 	"errors"
+	"time"
+)
+
+var (
+	ErrInvalidOrderStatus    = errors.New("invalid order status")
+	ErrOrderCannotBeModified = errors.New("order cannot be modified")
+	ErrOrderMustHaveItems    = errors.New("order must contain at least one item")
+	ErrInvalidProductID      = errors.New("product ID cannot be zero")
+	ErrInvalidQuantity       = errors.New("quantity must be greater than 0")
+	ErrInvalidPrice          = errors.New("price must be greater than 0")
+	ErrProductNameRequired   = errors.New("product name cannot be empty")
 )
 
 // OrderStatus represents the order status
@@ -14,18 +24,23 @@ const (
 	OrderStatusCancelled OrderStatus = "cancelled"
 )
 
-// OrderItem represents an item in an order
-type OrderItem struct {
-	ID          uint
-	OrderID     uint
-	ProductID   uint
+// ProductSnapshot captures product data at purchase time.
+type ProductSnapshot struct {
 	Name        string
 	Price       float64
-	Quantity    int
 	Image       string
 	Category    string
 	Description string
-	CreatedAt   time.Time
+}
+
+// OrderItem represents an item in an order
+type OrderItem struct {
+	ID              uint
+	OrderID         uint
+	ProductID       uint
+	ProductSnapshot ProductSnapshot
+	Quantity        int
+	CreatedAt       time.Time
 }
 
 // Order represents the order domain entity
@@ -41,17 +56,6 @@ type Order struct {
 	Email        string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
-}
-
-// OrderRepository defines the interface for order data access
-type OrderRepository interface {
-	Create(order *Order) error
-	GetByID(id uint) (*Order, error)
-	GetByUserID(userID uint) ([]*Order, error)
-	GetAll() ([]*Order, error)
-	Update(order *Order) error
-	Delete(id uint) error
-	DeleteAll() error
 }
 
 // NewOrder creates a new order with validation
@@ -86,25 +90,41 @@ func NewOrder(userID uint, customerName, phone, address, email string) (*Order, 
 	}, nil
 }
 
-// AddItem adds an item to the order
-func (o *Order) AddItem(productID uint, name string, price float64, quantity int, image, category, description string) error {
-	if quantity <= 0 {
-		return errors.New("quantity must be greater than 0")
+func NewProductSnapshot(name string, price float64, image, category, description string) (ProductSnapshot, error) {
+	if name == "" {
+		return ProductSnapshot{}, ErrProductNameRequired
 	}
 	if price <= 0 {
-		return errors.New("price must be greater than 0")
+		return ProductSnapshot{}, ErrInvalidPrice
 	}
 
-	item := OrderItem{
-		OrderID:     o.ID,
-		ProductID:   productID,
+	return ProductSnapshot{
 		Name:        name,
 		Price:       price,
-		Quantity:    quantity,
 		Image:       image,
 		Category:    category,
 		Description: description,
-		CreatedAt:   time.Now(),
+	}, nil
+}
+
+// AddItem adds an item to the order
+func (o *Order) AddItem(productID uint, snapshot ProductSnapshot, quantity int) error {
+	if !o.CanBeModified() {
+		return ErrOrderCannotBeModified
+	}
+	if productID == 0 {
+		return ErrInvalidProductID
+	}
+	if quantity <= 0 {
+		return ErrInvalidQuantity
+	}
+
+	item := OrderItem{
+		OrderID:         o.ID,
+		ProductID:       productID,
+		ProductSnapshot: snapshot,
+		Quantity:        quantity,
+		CreatedAt:       time.Now(),
 	}
 
 	o.OrderItems = append(o.OrderItems, item)
@@ -116,8 +136,23 @@ func (o *Order) AddItem(productID uint, name string, price float64, quantity int
 
 // UpdateStatus updates the order status
 func (o *Order) UpdateStatus(status OrderStatus) error {
-	if status != OrderStatusPending && status != OrderStatusConfirmed && status != OrderStatusCancelled {
-		return errors.New("invalid order status")
+	if !isValidStatus(status) {
+		return ErrInvalidOrderStatus
+	}
+
+	if status == o.Status {
+		return nil
+	}
+
+	switch o.Status {
+	case OrderStatusPending:
+		if status != OrderStatusConfirmed && status != OrderStatusCancelled {
+			return ErrInvalidOrderStatus
+		}
+	case OrderStatusConfirmed, OrderStatusCancelled:
+		return ErrInvalidOrderStatus
+	default:
+		return ErrInvalidOrderStatus
 	}
 
 	o.Status = status
@@ -129,7 +164,7 @@ func (o *Order) UpdateStatus(status OrderStatus) error {
 func (o *Order) calculateTotal() {
 	total := 0.0
 	for _, item := range o.OrderItems {
-		total += item.Price * float64(item.Quantity)
+		total += item.ProductSnapshot.Price * float64(item.Quantity)
 	}
 	o.TotalAmount = total
 }
@@ -146,4 +181,18 @@ func (o *Order) GetItemCount() int {
 		count += item.Quantity
 	}
 	return count
+}
+
+func (o *Order) ValidateForCreation() error {
+	if len(o.OrderItems) == 0 {
+		return ErrOrderMustHaveItems
+	}
+	if o.TotalAmount <= 0 {
+		return ErrInvalidPrice
+	}
+	return nil
+}
+
+func isValidStatus(status OrderStatus) bool {
+	return status == OrderStatusPending || status == OrderStatusConfirmed || status == OrderStatusCancelled
 }

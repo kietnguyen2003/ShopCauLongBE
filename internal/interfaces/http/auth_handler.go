@@ -4,69 +4,68 @@ import (
 	"net/http"
 	"strings"
 
-	"kafka-order-demo/backend/internal/application/auth"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
+	appAuth "kafka-order-demo/backend/internal/application/auth"
 )
 
 type AuthHandler struct {
-	authService *auth.Service
-	jwtSecret   string
+	authService   *appAuth.Service
+	tokenProvider appAuth.TokenProvider
 }
 
-func NewAuthHandler(authService *auth.Service, jwtSecret string) *AuthHandler {
+func NewAuthHandler(authService *appAuth.Service, tokenProvider appAuth.TokenProvider) *AuthHandler {
 	return &AuthHandler{
-		authService: authService,
-		jwtSecret:   jwtSecret,
+		authService:   authService,
+		tokenProvider: tokenProvider,
 	}
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
-	var req auth.RegisterRequest
+	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	resp, err := h.authService.Register(req)
+	resp, err := h.authService.Register(toRegisterInput(req))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, resp)
+	c.JSON(http.StatusCreated, toAuthHTTPResponse(resp))
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
-	var req auth.LoginRequest
+	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	resp, err := h.authService.Login(req)
+	resp, err := h.authService.Login(toLoginInput(req))
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, toAuthHTTPResponse(resp))
 }
 
 func (h *AuthHandler) AdminLogin(c *gin.Context) {
-	var req auth.LoginRequest
+	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	resp, err := h.authService.AdminLogin(req)
+	resp, err := h.authService.AdminLogin(toLoginInput(req))
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, toAuthHTTPResponse(resp))
 }
 
 func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
@@ -79,26 +78,15 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 		}
 
 		tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return []byte(h.jwtSecret), nil
-		})
-
-		if err != nil || !token.Valid {
+		claims, err := h.tokenProvider.Validate(tokenString)
+		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			c.Abort()
 			return
 		}
 
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
-			c.Abort()
-			return
-		}
-
-		userIDFloat := claims["user_id"].(float64)
-		c.Set("user_id", uint(userIDFloat))
-		c.Set("is_admin", claims["is_admin"].(bool))
+		c.Set("user_id", claims.UserID)
+		c.Set("is_admin", claims.IsAdmin)
 
 		c.Next()
 	}

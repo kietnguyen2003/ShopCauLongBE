@@ -1,0 +1,297 @@
+DDD + Clean Architecture review for ShopCauLongBE
+Date: 2026-04-15
+
+Overall assessment
+
+Current state is "partially aligned".
+The project already has a good first-level folder split:
+- domain
+- application
+- infrastructure
+- interfaces
+
+That means the project is moving in the right direction structurally.
+However, the actual dependency boundaries and responsibilities are not yet fully consistent with either strict DDD or Clean Architecture.
+
+What is already good
+
+1. The project separates high-level layers physically.
+   Evidence:
+   - internal/domain
+   - internal/application
+   - internal/infrastructure
+   - internal/interfaces
+
+2. Domain types contain some business behavior instead of being only anemic structs.
+   Evidence:
+   - internal/domain/order/order.go:57
+   - internal/domain/order/order.go:89
+   - internal/domain/order/order.go:117
+   - internal/domain/product/product.go:32
+   - internal/domain/product/product.go:56
+   - internal/domain/product/product.go:61
+   - internal/domain/product/product.go:71
+
+3. Composition root is in cmd/server/main.go, which is correct in Clean Architecture.
+   Evidence:
+   - cmd/server/main.go:17
+
+Main gaps against DDD and Clean Architecture
+
+1. Repository interfaces are placed in the domain layer.
+   Evidence:
+   - internal/domain/auth/user.go:19
+   - internal/domain/order/order.go:46
+   - internal/domain/product/product.go:21
+
+   Why this is a problem:
+   - In Clean Architecture, repository ports are usually owned by the use case/application layer because they exist to serve use cases.
+   - In DDD, repository abstractions can live near aggregates, but in your current code they are CRUD-shaped and application-driven, not aggregate-focused. That makes them look more like application ports than pure domain concepts.
+
+   What to change:
+   - Move repository interfaces into application layer packages or a dedicated port package.
+   - Keep domain focused on entities, value objects, domain services, domain errors, and invariants.
+   - Rework repository contracts around use cases and aggregates, not generic CRUD where possible.
+
+2. Application services expose domain entities directly to HTTP.
+   Evidence:
+   - internal/application/auth/service.go:28
+   - internal/application/auth/service.go:30
+   - internal/application/order/service.go:34
+   - internal/application/order/service.go:78
+   - internal/application/order/service.go:82
+   - internal/application/order/service.go:86
+   - internal/application/product/service.go:17
+   - internal/application/product/service.go:21
+   - internal/application/product/service.go:25
+   - internal/application/product/service.go:29
+   - internal/interfaces/http/order_handler.go:43
+   - internal/interfaces/http/order_handler.go:59
+
+   Why this is a problem:
+   - Clean Architecture prefers use cases to return output DTOs/models, not domain entities.
+   - Returning domain objects directly couples the interface layer to internal domain shape.
+   - It leaks fields that may be persistence-oriented or sensitive.
+
+   What to change:
+   - Define request/response DTOs in application layer or interface layer mapping layer.
+   - Let handlers convert HTTP requests into input models.
+   - Let application return response models that handlers serialize.
+   - Domain entities should not be the public API contract.
+
+3. Auth application service contains infrastructure/security implementation details.
+   Evidence:
+   - internal/application/auth/service.go:8
+   - internal/application/auth/service.go:9
+   - internal/application/auth/service.go:52
+   - internal/application/auth/service.go:87
+   - internal/application/auth/service.go:129
+
+   Why this is a problem:
+   - bcrypt and JWT are technical mechanisms, not use case policy.
+   - This makes application harder to test and more tightly coupled to libraries.
+
+   What to change:
+   - Introduce ports such as PasswordHasher and TokenProvider.
+   - Implement those ports in infrastructure.
+   - Keep auth use case focused on business workflow: validate user, authorize role, issue session/token via abstraction.
+
+4. HTTP layer depends on application request types and also imports domain types.
+   Evidence:
+   - internal/interfaces/http/auth_handler.go:25
+   - internal/interfaces/http/auth_handler.go:41
+   - internal/interfaces/http/auth_handler.go:57
+   - internal/interfaces/http/order_handler.go:23
+   - internal/interfaces/http/order_handler.go:8
+   - internal/interfaces/http/order_handler.go:88
+
+   Why this is a problem:
+   - Interface adapters should own transport-specific input shapes.
+   - Handler should not need to know domain enum/type details directly.
+   - This weakens the boundary between delivery and use case layers.
+
+   What to change:
+   - Create HTTP request/response structs in interfaces/http.
+   - Map them to application command/query DTOs.
+   - Move status parsing/validation into application or a dedicated mapper.
+
+5. Domain model still carries data that looks like read-model/persistence snapshot instead of pure business concepts.
+   Evidence:
+   - internal/domain/order/order.go:18
+   - internal/domain/order/order.go:22
+   - internal/domain/order/order.go:25
+   - internal/domain/order/order.go:26
+   - internal/domain/order/order.go:27
+
+   Why this is a problem:
+   - OrderItem is storing copied product presentation fields such as image, category, description.
+   - That may be acceptable if it is intentional snapshotting, but then it should be modeled explicitly as an order line snapshot/value object.
+   - Right now it reads as persistence convenience rather than explicit domain language.
+
+   What to change:
+   - Decide whether an order line intentionally snapshots product info at purchase time.
+   - If yes, rename/model it explicitly, for example ProductSnapshot or PurchasedProductData inside OrderItem.
+   - If no, keep only identifiers and business-required values.
+
+6. Domain invariants are still weak for aggregate rules.
+   Evidence:
+   - internal/domain/order/order.go:89
+   - internal/domain/order/order.go:117
+   - internal/domain/order/order.go:137
+   - internal/application/order/service.go:41
+   - internal/application/order/service.go:57
+
+   Why this is a problem:
+   - Order status can be changed to any valid status without transition rules.
+   - CanBeModified exists but is not enforced in status change or item updates.
+   - Stock decrement and order creation happen procedurally in application service instead of under a clearer transaction/invariant boundary.
+
+   What to change:
+   - Add explicit transition rules in domain, for example pending -> confirmed/cancelled only.
+   - Enforce aggregate invariants inside methods, not only via caller discipline.
+   - Introduce transaction handling/unit-of-work in application when coordinating order + product stock updates.
+
+7. Infrastructure database package mixes adapter code with application bootstrap concerns.
+   Evidence:
+   - internal/infrastructure/database/database.go:11
+   - internal/infrastructure/database/database.go:17
+   - internal/infrastructure/database/database.go:23
+   - internal/infrastructure/database/database.go:33
+
+   Why this is a problem:
+   - Connection creation, schema migration, and seed data are separate responsibilities.
+   - Seeding sample data inside the main database adapter makes infrastructure harder to reuse and reason about.
+
+   What to change:
+   - Separate:
+     - DB connection factory
+     - migration runner
+     - seed runner
+   - Trigger seed only from an explicit startup mode or CLI command, not automatically on every boot.
+
+8. Infrastructure models are tightly coupled to domain entities without a clear mapper boundary.
+   Evidence:
+   - internal/infrastructure/database/gorm_user_repository.go
+   - internal/infrastructure/database/gorm_product_repository.go
+   - internal/infrastructure/database/gorm_order_repository.go
+
+   Why this is a problem:
+   - It is acceptable in small projects, but as the domain grows it becomes difficult to evolve persistence independently.
+   - Mapper logic is currently embedded inside repositories, which scales poorly.
+
+   What to change:
+   - Introduce explicit mapper functions/files per aggregate if project grows.
+   - Keep GORM models clearly as persistence models, not near-domain clones.
+
+9. The auth middleware keeps JWT parsing policy in the interface layer.
+   Evidence:
+   - internal/interfaces/http/auth_handler.go:72
+
+   Why this is a problem:
+   - Authentication middleware is an interface adapter, so some code there is fine.
+   - But parsing claims shape, signature policy, and identity extraction should ideally be backed by an application/infrastructure auth component instead of raw JWT logic inside the HTTP adapter.
+
+   What to change:
+   - Extract token validation into an auth component/port.
+   - Let middleware call that abstraction and only translate result to Gin context.
+
+10. No visible distinction between commands and queries.
+    Evidence:
+    - internal/application/order/service.go
+    - internal/application/product/service.go
+
+    Why this is a problem:
+    - Not mandatory, but very useful for Clean Architecture and DDD as use cases grow.
+    - Read flows and write flows currently live in the same services with broad CRUD-like shapes.
+
+    What to change:
+    - Split use cases by intent:
+      - RegisterUser
+      - LoginUser
+      - CreateOrder
+      - ListUserOrders
+      - UpdateOrderStatus
+      - GetProductCatalog
+    - This can be done incrementally without full CQRS.
+
+Recommended target structure
+
+Suggested direction:
+
+internal/
+  domain/
+    auth/
+      user.go
+      errors.go
+    order/
+      order.go
+      order_item.go
+      errors.go
+    product/
+      product.go
+      errors.go
+  application/
+    auth/
+      register.go
+      login.go
+      ports.go
+      dto.go
+    order/
+      create_order.go
+      list_orders.go
+      update_order_status.go
+      ports.go
+      dto.go
+    product/
+      get_products.go
+      get_product.go
+      ports.go
+      dto.go
+  interfaces/
+    http/
+      auth_handler.go
+      order_handler.go
+      product_handler.go
+      request_response.go
+  infrastructure/
+    database/
+      connection.go
+      migrations.go
+      seed.go
+      models.go
+      user_repository.go
+      order_repository.go
+      product_repository.go
+    security/
+      bcrypt_hasher.go
+      jwt_provider.go
+
+Priority order for refactor
+
+Priority 1
+- Stop returning domain entities directly from application/use cases.
+- Introduce DTOs for input/output.
+- Move repository interfaces out of domain into application ports.
+
+Priority 2
+- Extract bcrypt and JWT behind interfaces.
+- Move HTTP transport models out of application package.
+
+Priority 3
+- Strengthen domain invariants for Order and Product.
+- Clarify whether OrderItem contains intentional purchase snapshots.
+
+Priority 4
+- Split infrastructure bootstrapping: connection, migration, seeding.
+- Introduce clearer mapper separation for persistence models.
+
+Short verdict
+
+If judged strictly:
+- Folder layout: mostly aligned
+- Dependency boundaries: not fully aligned
+- Domain modeling: basic start, but still entity-centric and CRUD-oriented
+- Clean Architecture execution: partial, not yet clean enough
+
+In other words:
+You have the outer shape of DDD + Clean Architecture, but not yet the deeper rule enforcement that makes those architectures valuable.

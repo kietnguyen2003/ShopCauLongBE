@@ -1,33 +1,49 @@
 package product
 
 import (
-	"kafka-order-demo/backend/internal/domain/product"
+	domainProduct "kafka-order-demo/backend/internal/domain/product"
 )
 
 type Service struct {
-	productRepo product.ProductRepository
+	productRepo ProductRepository
 }
 
-func NewService(productRepo product.ProductRepository) *Service {
+func NewService(productRepo ProductRepository) *Service {
 	return &Service{
 		productRepo: productRepo,
 	}
 }
 
-func (s *Service) GetProducts() ([]*product.Product, error) {
-	return s.productRepo.GetAll()
+func (s *Service) GetProducts() ([]ProductResponse, error) {
+	products, err := s.productRepo.GetAll()
+	if err != nil {
+		return nil, err
+	}
+
+	return toProductResponses(products), nil
 }
 
-func (s *Service) GetProduct(id uint) (*product.Product, error) {
-	return s.productRepo.GetByID(id)
+func (s *Service) GetProduct(id uint) (*ProductResponse, error) {
+	prod, err := s.productRepo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	response := toProductResponse(prod)
+	return &response, nil
 }
 
-func (s *Service) GetProductsByCategory(category string) ([]*product.Product, error) {
-	return s.productRepo.GetByCategory(category)
+func (s *Service) GetProductsByCategory(category string) ([]ProductResponse, error) {
+	products, err := s.productRepo.GetByCategory(category)
+	if err != nil {
+		return nil, err
+	}
+
+	return toProductResponses(products), nil
 }
 
-func (s *Service) CreateProduct(name, description string, price float64, stock int, image, category string) (*product.Product, error) {
-	prod, err := product.NewProduct(name, description, price, stock, image, category)
+func (s *Service) CreateProduct(name, description string, price float64, stock int, image, category string) (*ProductResponse, error) {
+	prod, err := domainProduct.NewProduct(name, description, price, stock, image, category)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +53,8 @@ func (s *Service) CreateProduct(name, description string, price float64, stock i
 		return nil, err
 	}
 
-	return prod, nil
+	response := toProductResponse(prod)
+	return &response, nil
 }
 
 func (s *Service) UpdateProductStock(id uint, stock int) error {

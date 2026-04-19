@@ -1,39 +1,22 @@
 package order
 
-import (
-	"kafka-order-demo/backend/internal/domain/order"
-	"kafka-order-demo/backend/internal/domain/product"
-)
+import domainOrder "kafka-order-demo/backend/internal/domain/order"
 
 type Service struct {
-	orderRepo   order.OrderRepository
-	productRepo product.ProductRepository
+	orderRepo   OrderRepository
+	productRepo ProductRepository
 }
 
-type CreateOrderRequest struct {
-	UserID       uint                     `json:"user_id"`
-	CustomerName string                   `json:"customer_name"`
-	Phone        string                   `json:"phone"`
-	Address      string                   `json:"address"`
-	Email        string                   `json:"email"`
-	Items        []CreateOrderItemRequest `json:"items"`
-}
-
-type CreateOrderItemRequest struct {
-	ProductID uint `json:"product_id"`
-	Quantity  int  `json:"quantity"`
-}
-
-func NewService(orderRepo order.OrderRepository, productRepo product.ProductRepository) *Service {
+func NewService(orderRepo OrderRepository, productRepo ProductRepository) *Service {
 	return &Service{
 		orderRepo:   orderRepo,
 		productRepo: productRepo,
 	}
 }
 
-func (s *Service) CreateOrder(req CreateOrderRequest) (*order.Order, error) {
+func (s *Service) CreateOrder(req CreateOrderRequest) (*OrderResponse, error) {
 	// Create order
-	ord, err := order.NewOrder(req.UserID, req.CustomerName, req.Phone, req.Address, req.Email)
+	ord, err := domainOrder.NewOrder(req.UserID, req.CustomerName, req.Phone, req.Address, req.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -45,11 +28,12 @@ func (s *Service) CreateOrder(req CreateOrderRequest) (*order.Order, error) {
 			return nil, err
 		}
 
-		if !prod.IsAvailable(item.Quantity) {
+		snapshot, err := domainOrder.NewProductSnapshot(prod.Name, prod.Price, prod.Image, prod.Category, prod.Description)
+		if err != nil {
 			return nil, err
 		}
 
-		err = ord.AddItem(prod.ID, prod.Name, prod.Price, item.Quantity, prod.Image, prod.Category, prod.Description)
+		err = ord.AddItem(prod.ID, snapshot, item.Quantity)
 		if err != nil {
 			return nil, err
 		}
@@ -66,28 +50,50 @@ func (s *Service) CreateOrder(req CreateOrderRequest) (*order.Order, error) {
 		}
 	}
 
+	err = ord.ValidateForCreation()
+	if err != nil {
+		return nil, err
+	}
+
 	// Save order
 	err = s.orderRepo.Create(ord)
 	if err != nil {
 		return nil, err
 	}
 
-	return ord, nil
+	response := toOrderResponse(ord)
+	return &response, nil
 }
 
-func (s *Service) GetOrdersByUser(userID uint) ([]*order.Order, error) {
-	return s.orderRepo.GetByUserID(userID)
+func (s *Service) GetOrdersByUser(userID uint) ([]OrderResponse, error) {
+	orders, err := s.orderRepo.GetByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return toOrderResponses(orders), nil
 }
 
-func (s *Service) GetAllOrders() ([]*order.Order, error) {
-	return s.orderRepo.GetAll()
+func (s *Service) GetAllOrders() ([]OrderResponse, error) {
+	orders, err := s.orderRepo.GetAll()
+	if err != nil {
+		return nil, err
+	}
+
+	return toOrderResponses(orders), nil
 }
 
-func (s *Service) GetOrder(id uint) (*order.Order, error) {
-	return s.orderRepo.GetByID(id)
+func (s *Service) GetOrder(id uint) (*OrderResponse, error) {
+	ord, err := s.orderRepo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	response := toOrderResponse(ord)
+	return &response, nil
 }
 
-func (s *Service) UpdateOrderStatus(id uint, status order.OrderStatus) error {
+func (s *Service) UpdateOrderStatus(id uint, status domainOrder.OrderStatus) error {
 	ord, err := s.orderRepo.GetByID(id)
 	if err != nil {
 		return err
