@@ -86,6 +86,7 @@ func setupRoutes(r *gin.Engine, authHandler *httpHandlers.AuthHandler, orderHand
 
 	// Public routes
 	r.GET("/api/products", productHandler.GetProducts)
+	r.GET("/api/products/search", productHandler.SearchProducts)
 	r.GET("/api/products/:id", productHandler.GetProductByID)
 
 	// Protected routes
@@ -102,6 +103,10 @@ func setupRoutes(r *gin.Engine, authHandler *httpHandlers.AuthHandler, orderHand
 		{
 			admin.GET("/orders", orderHandler.GetAllOrders)
 			admin.PUT("/orders/:id", orderHandler.UpdateOrderStatus)
+			admin.POST("/products", productHandler.CreateProduct)
+			admin.PUT("/products/:id", productHandler.UpdateProduct)
+			admin.DELETE("/products/:id", productHandler.DeleteProduct)
+			admin.PATCH("/products/:id/stock", productHandler.UpdateProductStock)
 		}
 	}
 }

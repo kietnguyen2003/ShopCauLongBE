@@ -7,6 +7,7 @@ type ProductRepository interface {
 	GetByID(id uint) (*domainProduct.Product, error)
 	GetAll() ([]*domainProduct.Product, error)
 	GetByCategory(category string) ([]*domainProduct.Product, error)
+	Search(keyword string) ([]*domainProduct.Product, error)
 	Update(product *domainProduct.Product) error
 	Delete(id uint) error
 	UpdateStock(id uint, stock int) error

@@ -17,6 +17,30 @@ type productResponse struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+type productRequest struct {
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Price       float64 `json:"price"`
+	Stock       int     `json:"stock"`
+	Image       string  `json:"image"`
+	Category    string  `json:"category"`
+}
+
+type updateProductStockRequest struct {
+	Stock int `json:"stock"`
+}
+
+func toProductInput(req productRequest) appProduct.ProductRequest {
+	return appProduct.ProductRequest{
+		Name:        req.Name,
+		Description: req.Description,
+		Price:       req.Price,
+		Stock:       req.Stock,
+		Image:       req.Image,
+		Category:    req.Category,
+	}
+}
+
 func toProductHTTPResponse(resp appProduct.ProductResponse) productResponse {
 	return productResponse{
 		ID:          resp.ID,

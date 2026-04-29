@@ -1,9 +1,10 @@
 package database
 
 import (
-	"gorm.io/gorm"
 	appProduct "kafka-order-demo/backend/internal/application/product"
 	"kafka-order-demo/backend/internal/domain/product"
+
+	"gorm.io/gorm"
 )
 
 type GormProduct struct {
@@ -81,6 +82,22 @@ func (r *GormProductRepository) GetAll() ([]*product.Product, error) {
 func (r *GormProductRepository) GetByCategory(category string) ([]*product.Product, error) {
 	var gormProducts []GormProduct
 	err := r.db.Where("category = ?", category).Find(&gormProducts).Error
+	if err != nil {
+		return nil, err
+	}
+
+	products := make([]*product.Product, len(gormProducts))
+	for i, gp := range gormProducts {
+		products[i] = r.toDomainProduct(&gp)
+	}
+
+	return products, nil
+}
+
+func (r *GormProductRepository) Search(keyword string) ([]*product.Product, error) {
+	var gormProducts []GormProduct
+	query := "%" + keyword + "%"
+	err := r.db.Where("name LIKE ? OR description LIKE ? OR category LIKE ?", query, query, query).Find(&gormProducts).Error
 	if err != nil {
 		return nil, err
 	}

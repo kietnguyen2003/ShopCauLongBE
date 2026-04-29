@@ -57,6 +57,28 @@ func (p *Product) UpdateStock(newStock int) error {
 	return nil
 }
 
+// UpdateDetails updates product information with validation
+func (p *Product) UpdateDetails(name, description string, price float64, stock int, image, category string) error {
+	if name == "" {
+		return errors.New("product name cannot be empty")
+	}
+	if price <= 0 {
+		return errors.New("product price must be greater than 0")
+	}
+	if stock < 0 {
+		return errors.New("product stock cannot be negative")
+	}
+
+	p.Name = name
+	p.Description = description
+	p.Price = price
+	p.Stock = stock
+	p.Image = image
+	p.Category = category
+	p.UpdatedAt = time.Now()
+	return nil
+}
+
 // DecreaseStock decreases product stock by quantity
 func (p *Product) DecreaseStock(quantity int) error {
 	if quantity <= 0 {
