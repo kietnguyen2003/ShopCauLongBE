@@ -11,6 +11,10 @@ func SeedInitialData(db *gorm.DB) error {
 		return err
 	}
 
+	if err := seedCategories(db); err != nil {
+		return err
+	}
+
 	if err := seedProducts(db); err != nil {
 		return err
 	}
@@ -39,6 +43,37 @@ func seedAdminUser(db *gorm.DB) error {
 	}
 
 	return db.Create(&admin).Error
+}
+
+func seedCategories(db *gorm.DB) error {
+	var categoryCount int64
+	if err := db.Model(&GormCategory{}).Count(&categoryCount).Error; err != nil {
+		return err
+	}
+
+	if categoryCount > 0 {
+		return nil
+	}
+
+	now := time.Now().Unix()
+	categories := []GormCategory{
+		{
+			Name:        "clothing",
+			Description: "Quan ao cau long",
+			Image:       "https://cdn.shopvnb.com/uploads/gallery/ao-cau-long-mizuno-vm1076-nam-xanh_1728499552.webp",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+		{
+			Name:        "racket",
+			Description: "Vot cau long",
+			Image:       "https://cdn.shopvnb.com/uploads/san_pham/vot-cau-long-yonex-arcsaber-11-pro-chinh-hang-1.webp",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+	}
+
+	return db.Create(&categories).Error
 }
 
 func seedProducts(db *gorm.DB) error {

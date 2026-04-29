@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"kafka-order-demo/backend/internal/application/auth"
+	"kafka-order-demo/backend/internal/application/category"
 	"kafka-order-demo/backend/internal/application/order"
 	"kafka-order-demo/backend/internal/application/product"
 	"kafka-order-demo/backend/internal/infrastructure/config"
@@ -35,6 +36,7 @@ func main() {
 
 	// Initialize repositories
 	userRepo := database.NewGormUserRepository(db)
+	categoryRepo := database.NewGormCategoryRepository(db)
 	productRepo := database.NewGormProductRepository(db)
 	orderRepo := database.NewGormOrderRepository(db)
 	passwordHasher := security.NewBcryptHasher()
@@ -42,11 +44,13 @@ func main() {
 
 	// Initialize services
 	authService := auth.NewService(userRepo, passwordHasher, tokenProvider)
+	categoryService := category.NewService(categoryRepo)
 	productService := product.NewService(productRepo)
 	orderService := order.NewService(orderRepo, productRepo)
 
 	// Initialize handlers
 	authHandler := httpHandlers.NewAuthHandler(authService, tokenProvider)
+	categoryHandler := httpHandlers.NewCategoryHandler(categoryService)
 	productHandler := httpHandlers.NewProductHandler(productService)
 	orderHandler := httpHandlers.NewOrderHandler(orderService)
 
@@ -62,13 +66,13 @@ func main() {
 	}))
 
 	// Setup routes
-	setupRoutes(r, authHandler, orderHandler, productHandler)
+	setupRoutes(r, authHandler, orderHandler, productHandler, categoryHandler)
 
 	log.Printf("Server starting on port %s", cfg.Port)
 	log.Fatal(r.Run(":" + cfg.Port))
 }
 
-func setupRoutes(r *gin.Engine, authHandler *httpHandlers.AuthHandler, orderHandler *httpHandlers.OrderHandler, productHandler *httpHandlers.ProductHandler) {
+func setupRoutes(r *gin.Engine, authHandler *httpHandlers.AuthHandler, orderHandler *httpHandlers.OrderHandler, productHandler *httpHandlers.ProductHandler, categoryHandler *httpHandlers.CategoryHandler) {
 	// Auth routes
 	auth := r.Group("/auth")
 	{
@@ -88,6 +92,8 @@ func setupRoutes(r *gin.Engine, authHandler *httpHandlers.AuthHandler, orderHand
 	r.GET("/api/products", productHandler.GetProducts)
 	r.GET("/api/products/search", productHandler.SearchProducts)
 	r.GET("/api/products/:id", productHandler.GetProductByID)
+	r.GET("/api/categories", categoryHandler.GetCategories)
+	r.GET("/api/categories/:id", categoryHandler.GetCategoryByID)
 
 	// Protected routes
 	api := r.Group("/api")
@@ -107,6 +113,9 @@ func setupRoutes(r *gin.Engine, authHandler *httpHandlers.AuthHandler, orderHand
 			admin.PUT("/products/:id", productHandler.UpdateProduct)
 			admin.DELETE("/products/:id", productHandler.DeleteProduct)
 			admin.PATCH("/products/:id/stock", productHandler.UpdateProductStock)
+			admin.POST("/categories", categoryHandler.CreateCategory)
+			admin.PUT("/categories/:id", categoryHandler.UpdateCategory)
+			admin.DELETE("/categories/:id", categoryHandler.DeleteCategory)
 		}
 	}
 }
