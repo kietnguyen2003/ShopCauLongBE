@@ -13,6 +13,21 @@ type RegisterRequest struct {
 	Password string
 }
 
+type ChangePasswordRequest struct {
+	UserID      uint
+	OldPassword string
+	NewPassword string
+}
+
+type ForgotPasswordRequest struct {
+	Email string
+}
+
+type ResetPasswordRequest struct {
+	ResetToken  string
+	NewPassword string
+}
+
 type UserResponse struct {
 	ID       uint
 	Username string

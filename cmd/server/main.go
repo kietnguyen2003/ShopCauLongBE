@@ -75,6 +75,13 @@ func setupRoutes(r *gin.Engine, authHandler *httpHandlers.AuthHandler, orderHand
 		auth.POST("/register", authHandler.Register)
 		auth.POST("/login", authHandler.Login)
 		auth.POST("/admin-login", authHandler.AdminLogin)
+		auth.POST("/forgot-password", authHandler.ForgotPassword)
+		auth.POST("/reset-password", authHandler.ResetPassword)
+
+		auth.GET("/me", authHandler.AuthMiddleware(), authHandler.Me)
+		auth.POST("/logout", authHandler.AuthMiddleware(), authHandler.Logout)
+		auth.POST("/refresh-token", authHandler.AuthMiddleware(), authHandler.RefreshToken)
+		auth.PUT("/change-password", authHandler.AuthMiddleware(), authHandler.ChangePassword)
 	}
 
 	// Public routes

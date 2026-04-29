@@ -13,6 +13,20 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
+type changePasswordRequest struct {
+	OldPassword string `json:"old_password"`
+	NewPassword string `json:"new_password"`
+}
+
+type forgotPasswordRequest struct {
+	Email string `json:"email"`
+}
+
+type resetPasswordRequest struct {
+	ResetToken  string `json:"reset_token"`
+	NewPassword string `json:"new_password"`
+}
+
 type userResponse struct {
 	ID       uint   `json:"id"`
 	Username string `json:"username"`
@@ -40,6 +54,27 @@ func toLoginInput(req loginRequest) appAuth.LoginRequest {
 	}
 }
 
+func toChangePasswordInput(req changePasswordRequest, userID uint) appAuth.ChangePasswordRequest {
+	return appAuth.ChangePasswordRequest{
+		UserID:      userID,
+		OldPassword: req.OldPassword,
+		NewPassword: req.NewPassword,
+	}
+}
+
+func toForgotPasswordInput(req forgotPasswordRequest) appAuth.ForgotPasswordRequest {
+	return appAuth.ForgotPasswordRequest{
+		Email: req.Email,
+	}
+}
+
+func toResetPasswordInput(req resetPasswordRequest) appAuth.ResetPasswordRequest {
+	return appAuth.ResetPasswordRequest{
+		ResetToken:  req.ResetToken,
+		NewPassword: req.NewPassword,
+	}
+}
+
 func toAuthHTTPResponse(resp *appAuth.AuthResponse) authResponse {
 	return authResponse{
 		Token: resp.Token,
@@ -49,5 +84,14 @@ func toAuthHTTPResponse(resp *appAuth.AuthResponse) authResponse {
 			Email:    resp.User.Email,
 			IsAdmin:  resp.User.IsAdmin,
 		},
+	}
+}
+
+func toUserHTTPResponse(resp *appAuth.UserResponse) userResponse {
+	return userResponse{
+		ID:       resp.ID,
+		Username: resp.Username,
+		Email:    resp.Email,
+		IsAdmin:  resp.IsAdmin,
 	}
 }

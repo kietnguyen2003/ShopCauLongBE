@@ -108,3 +108,85 @@ func (s *Service) AdminLogin(req LoginRequest) (*AuthResponse, error) {
 		User:  toUserResponse(user),
 	}, nil
 }
+
+func (s *Service) GetMe(userID uint) (*UserResponse, error) {
+	user, err := s.userRepo.GetByID(userID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	response := toUserResponse(user)
+	return &response, nil
+}
+
+func (s *Service) RefreshToken(userID uint) (*AuthResponse, error) {
+	user, err := s.userRepo.GetByID(userID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	token, err := s.tokenProvider.Generate(user.ID, user.IsAdmin)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AuthResponse{
+		Token: token,
+		User:  toUserResponse(user),
+	}, nil
+}
+
+func (s *Service) ChangePassword(req ChangePasswordRequest) error {
+	user, err := s.userRepo.GetByID(req.UserID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	err = s.passwordHasher.Compare(user.Password, req.OldPassword)
+	if err != nil {
+		return errors.New("old password is incorrect")
+	}
+
+	hashedPassword, err := s.passwordHasher.Hash(req.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	if err := user.UpdatePassword(hashedPassword); err != nil {
+		return err
+	}
+
+	return s.userRepo.Update(user)
+}
+
+func (s *Service) ForgotPassword(req ForgotPasswordRequest) (string, error) {
+	user, err := s.userRepo.GetByEmail(req.Email)
+	if err != nil {
+		return "", errors.New("email not found")
+	}
+
+	return s.tokenProvider.Generate(user.ID, user.IsAdmin)
+}
+
+func (s *Service) ResetPassword(req ResetPasswordRequest) error {
+	claims, err := s.tokenProvider.Validate(req.ResetToken)
+	if err != nil {
+		return errors.New("invalid reset token")
+	}
+
+	user, err := s.userRepo.GetByID(claims.UserID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	hashedPassword, err := s.passwordHasher.Hash(req.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	if err := user.UpdatePassword(hashedPassword); err != nil {
+		return err
+	}
+
+	return s.userRepo.Update(user)
+}

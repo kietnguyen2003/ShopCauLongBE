@@ -71,6 +71,94 @@ func (h *AuthHandler) AdminLogin(c *gin.Context) {
 	successResponse(c, http.StatusOK, "Admin login successfully", toAuthHTTPResponse(resp))
 }
 
+func (h *AuthHandler) Me(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		errorResponse(c, http.StatusUnauthorized, "User not authenticated")
+		return
+	}
+
+	resp, err := h.authService.GetMe(userID.(uint))
+	if err != nil {
+		errorResponse(c, http.StatusNotFound, err.Error())
+		return
+	}
+
+	successResponse(c, http.StatusOK, "Get current user successfully", toUserHTTPResponse(resp))
+}
+
+func (h *AuthHandler) Logout(c *gin.Context) {
+	successResponse(c, http.StatusOK, "Logout successfully", nil)
+}
+
+func (h *AuthHandler) RefreshToken(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		errorResponse(c, http.StatusUnauthorized, "User not authenticated")
+		return
+	}
+
+	resp, err := h.authService.RefreshToken(userID.(uint))
+	if err != nil {
+		errorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	successResponse(c, http.StatusOK, "Refresh token successfully", toAuthHTTPResponse(resp))
+}
+
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		errorResponse(c, http.StatusUnauthorized, "User not authenticated")
+		return
+	}
+
+	var req changePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.authService.ChangePassword(toChangePasswordInput(req, userID.(uint))); err != nil {
+		errorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	successResponse(c, http.StatusOK, "Change password successfully", nil)
+}
+
+func (h *AuthHandler) ForgotPassword(c *gin.Context) {
+	var req forgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	resetToken, err := h.authService.ForgotPassword(toForgotPasswordInput(req))
+	if err != nil {
+		errorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	successResponse(c, http.StatusOK, "Forgot password successfully", gin.H{"reset_token": resetToken})
+}
+
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req resetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.authService.ResetPassword(toResetPasswordInput(req)); err != nil {
+		errorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	successResponse(c, http.StatusOK, "Reset password successfully", nil)
+}
+
 func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
