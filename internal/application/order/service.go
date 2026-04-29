@@ -1,6 +1,10 @@
 package order
 
-import domainOrder "kafka-order-demo/backend/internal/domain/order"
+import (
+	"errors"
+	domainOrder "kafka-order-demo/backend/internal/domain/order"
+	"log"
+)
 
 type Service struct {
 	orderRepo   OrderRepository
@@ -18,14 +22,15 @@ func (s *Service) CreateOrder(req CreateOrderRequest) (*OrderResponse, error) {
 	// Create order
 	ord, err := domainOrder.NewOrder(req.UserID, req.CustomerName, req.Phone, req.Address, req.Email)
 	if err != nil {
-		return nil, err
+		log.Println(err)
+		return nil, errors.New("failed to create order")
 	}
 
 	// Add items and validate stock
 	for _, item := range req.Items {
 		prod, err := s.productRepo.GetByID(item.ProductID)
 		if err != nil {
-			return nil, err
+			return nil, errors.New("product not found")
 		}
 
 		snapshot, err := domainOrder.NewProductSnapshot(prod.Name, prod.Price, prod.Image, prod.Category, prod.Description)

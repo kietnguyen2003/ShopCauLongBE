@@ -1,11 +1,13 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	appAuth "kafka-order-demo/backend/internal/application/auth"
+
+	"github.com/gin-gonic/gin"
 )
 
 type AuthHandler struct {
@@ -23,56 +25,57 @@ func NewAuthHandler(authService *appAuth.Service, tokenProvider appAuth.TokenPro
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	resp, err := h.authService.Register(toRegisterInput(req))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusCreated, toAuthHTTPResponse(resp))
+	successResponse(c, http.StatusCreated, "Register successfully", toAuthHTTPResponse(resp))
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	resp, err := h.authService.Login(toLoginInput(req))
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		errorResponse(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, toAuthHTTPResponse(resp))
+	successResponse(c, http.StatusOK, "Login successfully", toAuthHTTPResponse(resp))
 }
 
 func (h *AuthHandler) AdminLogin(c *gin.Context) {
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
+	fmt.Println("Request body:", req)
 
 	resp, err := h.authService.AdminLogin(toLoginInput(req))
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		errorResponse(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, toAuthHTTPResponse(resp))
+	successResponse(c, http.StatusOK, "Admin login successfully", toAuthHTTPResponse(resp))
 }
 
 func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+			errorResponse(c, http.StatusUnauthorized, "Authorization header required")
 			c.Abort()
 			return
 		}
@@ -80,7 +83,7 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 		tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
 		claims, err := h.tokenProvider.Validate(tokenString)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			errorResponse(c, http.StatusUnauthorized, "Invalid token")
 			c.Abort()
 			return
 		}
@@ -96,7 +99,7 @@ func (h *AuthHandler) AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		isAdmin, exists := c.Get("is_admin")
 		if !exists || !isAdmin.(bool) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+			errorResponse(c, http.StatusForbidden, "Admin access required")
 			c.Abort()
 			return
 		}

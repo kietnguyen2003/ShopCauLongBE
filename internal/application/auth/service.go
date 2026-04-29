@@ -64,12 +64,12 @@ func (s *Service) Register(req RegisterRequest) (*AuthResponse, error) {
 func (s *Service) Login(req LoginRequest) (*AuthResponse, error) {
 	user, err := s.userRepo.GetByUsername(req.Username)
 	if err != nil {
-		return nil, errors.New("invalid credentials")
+		return nil, errors.New("username không tồn tại")
 	}
 
 	err = s.passwordHasher.Compare(user.Password, req.Password)
 	if err != nil {
-		return nil, errors.New("invalid credentials")
+		return nil, errors.New("mật khẩu không đúng")
 	}
 
 	token, err := s.tokenProvider.Generate(user.ID, user.IsAdmin)
@@ -86,7 +86,7 @@ func (s *Service) Login(req LoginRequest) (*AuthResponse, error) {
 func (s *Service) AdminLogin(req LoginRequest) (*AuthResponse, error) {
 	user, err := s.userRepo.GetByUsername(req.Username)
 	if err != nil {
-		return nil, errors.New("invalid credentials")
+		return nil, errors.New("username không tồn tại")
 	}
 
 	if !user.IsAdmin {
@@ -95,7 +95,7 @@ func (s *Service) AdminLogin(req LoginRequest) (*AuthResponse, error) {
 
 	err = s.passwordHasher.Compare(user.Password, req.Password)
 	if err != nil {
-		return nil, errors.New("invalid credentials")
+		return nil, errors.New("mật khẩu không đúng")
 	}
 
 	token, err := s.tokenProvider.Generate(user.ID, user.IsAdmin)
