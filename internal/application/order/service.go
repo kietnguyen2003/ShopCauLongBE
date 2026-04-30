@@ -2,7 +2,9 @@ package order
 
 import (
 	"errors"
+	"fmt"
 	domainOrder "kafka-order-demo/backend/internal/domain/order"
+	domainProduct "kafka-order-demo/backend/internal/domain/product"
 	"log"
 )
 
@@ -26,11 +28,19 @@ func (s *Service) CreateOrder(req CreateOrderRequest) (*OrderResponse, error) {
 		return nil, errors.New("failed to create order")
 	}
 
+	productsByID := make(map[uint]*domainProduct.Product)
+	quantitiesByProductID := make(map[uint]int)
+
 	// Add items and validate stock
 	for _, item := range req.Items {
-		prod, err := s.productRepo.GetByID(item.ProductID)
-		if err != nil {
-			return nil, errors.New("product not found")
+		prod, exists := productsByID[item.ProductID]
+		if !exists {
+			var err error
+			prod, err = s.productRepo.GetByID(item.ProductID)
+			if err != nil {
+				return nil, errors.New("product not found")
+			}
+			productsByID[item.ProductID] = prod
 		}
 
 		snapshot, err := domainOrder.NewProductSnapshot(prod.Name, prod.Price, prod.Image, prod.Category, prod.Description)
@@ -43,15 +53,9 @@ func (s *Service) CreateOrder(req CreateOrderRequest) (*OrderResponse, error) {
 			return nil, err
 		}
 
-		// Decrease product stock
-		err = prod.DecreaseStock(item.Quantity)
-		if err != nil {
-			return nil, err
-		}
-
-		err = s.productRepo.Update(prod)
-		if err != nil {
-			return nil, err
+		quantitiesByProductID[prod.ID] += item.Quantity
+		if prod.Stock < quantitiesByProductID[prod.ID] {
+			return nil, fmt.Errorf("sản phẩm %s không còn đủ hàng", prod.Name)
 		}
 	}
 
@@ -60,8 +64,16 @@ func (s *Service) CreateOrder(req CreateOrderRequest) (*OrderResponse, error) {
 		return nil, err
 	}
 
-	// Save order
-	err = s.orderRepo.Create(ord)
+	productsToUpdate := make([]*domainProduct.Product, 0, len(productsByID))
+	for productID, prod := range productsByID {
+		if err := prod.DecreaseStock(quantitiesByProductID[productID]); err != nil {
+			return nil, err
+		}
+		productsToUpdate = append(productsToUpdate, prod)
+	}
+
+	// Save stock updates and order atomically
+	err = s.orderRepo.CreateWithProductStockUpdates(ord, productsToUpdate)
 	if err != nil {
 		return nil, err
 	}

@@ -75,18 +75,43 @@ func (s *Service) CreateProduct(req ProductRequest) (*ProductResponse, error) {
 	return &response, nil
 }
 
-func (s *Service) UpdateProduct(id uint, req ProductRequest) (*ProductResponse, error) {
+func (s *Service) UpdateProduct(id uint, req ProductUpdateRequest) (*ProductResponse, error) {
 	prod, err := s.productRepo.GetByID(id)
 	if err != nil {
 		return nil, err
 	}
 
-	err = prod.UpdateDetails(req.Name, req.Description, req.Price, req.Stock, req.Image, req.Category)
-	if err != nil {
-		return nil, err
+	name := prod.Name
+	description := prod.Description
+	price := prod.Price
+	stock := prod.Stock
+	image := prod.Image
+	category := prod.Category
+
+	if req.Name != nil {
+		name = *req.Name
+	}
+	if req.Description != nil {
+		description = *req.Description
+	}
+	if req.Price != nil {
+		price = *req.Price
+	}
+	if req.Stock != nil {
+		stock = *req.Stock
+	}
+	if req.Image != nil {
+		image = *req.Image
+	}
+	if req.Category != nil {
+		category = *req.Category
+		if err := s.ensureCategoryExists(category); err != nil {
+			return nil, err
+		}
 	}
 
-	if err := s.ensureCategoryExists(req.Category); err != nil {
+	err = prod.UpdateDetails(name, description, price, stock, image, category)
+	if err != nil {
 		return nil, err
 	}
 

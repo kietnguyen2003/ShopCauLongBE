@@ -26,12 +26,32 @@ type productRequest struct {
 	Category    string  `json:"category"`
 }
 
+type productUpdateRequest struct {
+	Name        *string  `json:"name"`
+	Description *string  `json:"description"`
+	Price       *float64 `json:"price"`
+	Stock       *int     `json:"stock"`
+	Image       *string  `json:"image"`
+	Category    *string  `json:"category"`
+}
+
 type updateProductStockRequest struct {
 	Stock int `json:"stock"`
 }
 
 func toProductInput(req productRequest) appProduct.ProductRequest {
 	return appProduct.ProductRequest{
+		Name:        req.Name,
+		Description: req.Description,
+		Price:       req.Price,
+		Stock:       req.Stock,
+		Image:       req.Image,
+		Category:    req.Category,
+	}
+}
+
+func toProductUpdateInput(req productUpdateRequest) appProduct.ProductUpdateRequest {
+	return appProduct.ProductUpdateRequest{
 		Name:        req.Name,
 		Description: req.Description,
 		Price:       req.Price,

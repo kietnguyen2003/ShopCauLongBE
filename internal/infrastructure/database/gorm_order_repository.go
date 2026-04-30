@@ -3,6 +3,7 @@ package database
 import (
 	appOrder "kafka-order-demo/backend/internal/application/order"
 	"kafka-order-demo/backend/internal/domain/order"
+	"kafka-order-demo/backend/internal/domain/product"
 
 	"gorm.io/gorm"
 )
@@ -66,6 +67,40 @@ func (r *GormOrderRepository) Create(ord *order.Order) error {
 	}
 
 	return nil
+}
+
+func (r *GormOrderRepository) CreateWithProductStockUpdates(ord *order.Order, products []*product.Product) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		for _, prod := range products {
+			gormProduct := &GormProduct{
+				ID:          prod.ID,
+				Name:        prod.Name,
+				Description: prod.Description,
+				Price:       prod.Price,
+				Stock:       prod.Stock,
+				Image:       prod.Image,
+				Category:    prod.Category,
+				CreatedAt:   prod.CreatedAt.Unix(),
+				UpdatedAt:   prod.UpdatedAt.Unix(),
+			}
+
+			if err := tx.Save(gormProduct).Error; err != nil {
+				return err
+			}
+		}
+
+		gormOrder := r.toGormOrder(ord)
+		if err := tx.Create(gormOrder).Error; err != nil {
+			return err
+		}
+
+		ord.ID = gormOrder.ID
+		for i, item := range gormOrder.OrderItems {
+			ord.OrderItems[i].ID = item.ID
+		}
+
+		return nil
+	})
 }
 
 func (r *GormOrderRepository) GetByID(id uint) (*order.Order, error) {

@@ -94,13 +94,13 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 		return
 	}
 
-	var req productRequest
+	var req productUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		errorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	product, err := h.productService.UpdateProduct(uint(id), toProductInput(req))
+	product, err := h.productService.UpdateProduct(uint(id), toProductUpdateInput(req))
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, err.Error())
 		return

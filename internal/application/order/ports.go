@@ -7,6 +7,7 @@ import (
 
 type OrderRepository interface {
 	Create(order *domainOrder.Order) error
+	CreateWithProductStockUpdates(order *domainOrder.Order, products []*domainProduct.Product) error
 	GetByID(id uint) (*domainOrder.Order, error)
 	GetByUserID(userID uint) ([]*domainOrder.Order, error)
 	GetAll() ([]*domainOrder.Order, error)
@@ -17,5 +18,4 @@ type OrderRepository interface {
 
 type ProductRepository interface {
 	GetByID(id uint) (*domainProduct.Product, error)
-	Update(product *domainProduct.Product) error
 }

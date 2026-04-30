@@ -26,6 +26,15 @@ type ProductRequest struct {
 	Category    string
 }
 
+type ProductUpdateRequest struct {
+	Name        *string
+	Description *string
+	Price       *float64
+	Stock       *int
+	Image       *string
+	Category    *string
+}
+
 func toProductResponse(prod *domainProduct.Product) ProductResponse {
 	return ProductResponse{
 		ID:          prod.ID,
