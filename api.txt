@@ -553,7 +553,58 @@ HTTP status: 500 Internal Server Error
 }
 
 
-13. Admin tao san pham
+13. Lay san pham theo danh muc
+------------------------------
+Method:
+GET
+
+URL:
+/api/products/category/:category
+
+Vi du:
+/api/products/category/clothing
+
+Header:
+Accept: application/json
+
+Request body:
+Khong co
+
+Path params:
+category: Ten danh muc cua san pham, vi du clothing hoac racket.
+
+Response thanh cong:
+HTTP status: 200 OK
+
+{
+  "code": 200,
+  "msg": "Get products by category successfully",
+  "data": [
+    {
+      "id": 1,
+      "name": "Ao Cau Long Yonex Pro",
+      "description": "Mo ta san pham",
+      "price": 450000,
+      "stock": 20,
+      "image": "https://example.com/image.png",
+      "category": "clothing",
+      "created_at": "2026-04-29T10:00:00Z",
+      "updated_at": "2026-04-29T10:00:00Z"
+    }
+  ]
+}
+
+Response loi:
+HTTP status: 500 Internal Server Error
+
+{
+  "code": 500,
+  "msg": "Error message",
+  "data": null
+}
+
+
+14. Admin tao san pham
 ----------------------
 Method:
 POST
@@ -605,7 +656,7 @@ HTTP status: 400 Bad Request, 401 Unauthorized hoac 403 Forbidden
 }
 
 
-14. Admin cap nhat san pham
+15. Admin cap nhat san pham
 ---------------------------
 Method:
 PUT
@@ -660,7 +711,7 @@ HTTP status: 400 Bad Request, 401 Unauthorized hoac 403 Forbidden
 }
 
 
-15. Admin xoa san pham
+16. Admin xoa san pham
 ----------------------
 Method:
 DELETE
@@ -697,7 +748,7 @@ HTTP status: 400 Bad Request, 401 Unauthorized hoac 403 Forbidden
 }
 
 
-16. Admin cap nhat ton kho
+17. Admin cap nhat ton kho
 --------------------------
 Method:
 PATCH
@@ -737,7 +788,7 @@ HTTP status: 400 Bad Request, 401 Unauthorized hoac 403 Forbidden
 }
 
 
-17. Lay danh sach danh muc
+18. Lay danh sach danh muc
 --------------------------
 Method:
 GET
@@ -779,7 +830,7 @@ HTTP status: 500 Internal Server Error
 }
 
 
-18. Chi tiet danh muc
+19. Chi tiet danh muc
 ---------------------
 Method:
 GET
@@ -822,7 +873,7 @@ HTTP status: 400 Bad Request hoac 404 Not Found
 }
 
 
-19. Admin tao danh muc
+20. Admin tao danh muc
 ----------------------
 Method:
 POST
@@ -868,7 +919,7 @@ HTTP status: 400 Bad Request, 401 Unauthorized hoac 403 Forbidden
 }
 
 
-20. Admin sua danh muc
+21. Admin sua danh muc
 ----------------------
 Method:
 PUT
@@ -917,7 +968,7 @@ HTTP status: 400 Bad Request, 401 Unauthorized hoac 403 Forbidden
 }
 
 
-21. Admin xoa danh muc
+22. Admin xoa danh muc
 ----------------------
 Method:
 DELETE
@@ -954,7 +1005,7 @@ HTTP status: 400 Bad Request, 401 Unauthorized hoac 403 Forbidden
 }
 
 
-22. Tao don hang
+23. Tao don hang
 ---------------
 Method:
 POST
@@ -1028,7 +1079,7 @@ HTTP status: 400 Bad Request hoac 401 Unauthorized
 }
 
 
-23. Lay don hang cua user dang dang nhap
+24. Lay don hang cua user dang dang nhap
 ---------------------------------------
 Method:
 GET
@@ -1088,7 +1139,7 @@ HTTP status: 401 Unauthorized hoac 500 Internal Server Error
 }
 
 
-24. Admin lay tat ca don hang
+25. Admin lay tat ca don hang
 ----------------------------
 Method:
 GET
@@ -1148,7 +1199,7 @@ HTTP status: 401 Unauthorized, 403 Forbidden hoac 500 Internal Server Error
 }
 
 
-25. Admin cap nhat trang thai don hang
+26. Admin cap nhat trang thai don hang
 -------------------------------------
 Method:
 PUT

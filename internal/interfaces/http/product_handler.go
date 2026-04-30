@@ -4,8 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	appProduct "kafka-order-demo/backend/internal/application/product"
+
+	"github.com/gin-gonic/gin"
 )
 
 type ProductHandler struct {
@@ -55,6 +56,18 @@ func (h *ProductHandler) SearchProducts(c *gin.Context) {
 	}
 
 	successResponse(c, http.StatusOK, "Search products successfully", toProductHTTPResponses(products))
+}
+
+func (h *ProductHandler) GetProductsByCategory(c *gin.Context) {
+	category := c.Param("category")
+
+	products, err := h.productService.GetProductsByCategory(category)
+	if err != nil {
+		errorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	successResponse(c, http.StatusOK, "Get products by category successfully", toProductHTTPResponses(products))
 }
 
 func (h *ProductHandler) CreateProduct(c *gin.Context) {

@@ -91,6 +91,7 @@ func setupRoutes(r *gin.Engine, authHandler *httpHandlers.AuthHandler, orderHand
 	// Public routes
 	r.GET("/api/products", productHandler.GetProducts)
 	r.GET("/api/products/search", productHandler.SearchProducts)
+	r.GET("/api/products/category/:category", productHandler.GetProductsByCategory)
 	r.GET("/api/products/:id", productHandler.GetProductByID)
 	r.GET("/api/categories", categoryHandler.GetCategories)
 	r.GET("/api/categories/:id", categoryHandler.GetCategoryByID)

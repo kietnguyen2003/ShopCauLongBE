@@ -3,6 +3,7 @@ package database
 import (
 	appProduct "kafka-order-demo/backend/internal/application/product"
 	"kafka-order-demo/backend/internal/domain/product"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -96,8 +97,9 @@ func (r *GormProductRepository) GetByCategory(category string) ([]*product.Produ
 
 func (r *GormProductRepository) Search(keyword string) ([]*product.Product, error) {
 	var gormProducts []GormProduct
+	keyword = strings.ToLower(keyword)
 	query := "%" + keyword + "%"
-	err := r.db.Where("name LIKE ? OR description LIKE ? OR category LIKE ?", query, query, query).Find(&gormProducts).Error
+	err := r.db.Where("LOWER(name) LIKE ? OR LOWER(description) LIKE ? OR LOWER(category) LIKE ?", query, query, query).Find(&gormProducts).Error
 	if err != nil {
 		return nil, err
 	}
