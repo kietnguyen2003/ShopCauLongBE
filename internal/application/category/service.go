@@ -45,13 +45,27 @@ func (s *Service) CreateCategory(req CategoryRequest) (*CategoryResponse, error)
 	return &response, nil
 }
 
-func (s *Service) UpdateCategory(id uint, req CategoryRequest) (*CategoryResponse, error) {
+func (s *Service) UpdateCategory(id uint, req CategoryUpdateRequest) (*CategoryResponse, error) {
 	category, err := s.categoryRepo.GetByID(id)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := category.Update(req.Name, req.Description, req.Image); err != nil {
+	name := category.Name
+	description := category.Description
+	image := category.Image
+
+	if req.Name != nil {
+		name = *req.Name
+	}
+	if req.Description != nil {
+		description = *req.Description
+	}
+	if req.Image != nil {
+		image = *req.Image
+	}
+
+	if err := category.Update(name, description, image); err != nil {
 		return nil, err
 	}
 

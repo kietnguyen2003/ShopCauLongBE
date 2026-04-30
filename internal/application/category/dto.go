@@ -11,6 +11,12 @@ type CategoryRequest struct {
 	Image       string
 }
 
+type CategoryUpdateRequest struct {
+	Name        *string
+	Description *string
+	Image       *string
+}
+
 type CategoryResponse struct {
 	ID          uint
 	Name        string

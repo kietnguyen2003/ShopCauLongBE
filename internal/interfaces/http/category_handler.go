@@ -70,13 +70,13 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 		return
 	}
 
-	var req categoryRequest
+	var req categoryUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		errorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	category, err := h.categoryService.UpdateCategory(uint(id), toCategoryInput(req))
+	category, err := h.categoryService.UpdateCategory(uint(id), toCategoryUpdateInput(req))
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, err.Error())
 		return

@@ -11,6 +11,12 @@ type categoryRequest struct {
 	Image       string `json:"image"`
 }
 
+type categoryUpdateRequest struct {
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+	Image       *string `json:"image"`
+}
+
 type categoryResponse struct {
 	ID          uint      `json:"id"`
 	Name        string    `json:"name"`
@@ -22,6 +28,14 @@ type categoryResponse struct {
 
 func toCategoryInput(req categoryRequest) appCategory.CategoryRequest {
 	return appCategory.CategoryRequest{
+		Name:        req.Name,
+		Description: req.Description,
+		Image:       req.Image,
+	}
+}
+
+func toCategoryUpdateInput(req categoryUpdateRequest) appCategory.CategoryUpdateRequest {
+	return appCategory.CategoryUpdateRequest{
 		Name:        req.Name,
 		Description: req.Description,
 		Image:       req.Image,
