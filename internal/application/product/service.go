@@ -1,16 +1,21 @@
 package product
 
 import (
+	"errors"
 	domainProduct "kafka-order-demo/backend/internal/domain/product"
 )
 
+var ErrCategoryNotFound = errors.New("category not found")
+
 type Service struct {
-	productRepo ProductRepository
+	productRepo  ProductRepository
+	categoryRepo CategoryRepository
 }
 
-func NewService(productRepo ProductRepository) *Service {
+func NewService(productRepo ProductRepository, categoryRepo CategoryRepository) *Service {
 	return &Service{
-		productRepo: productRepo,
+		productRepo:  productRepo,
+		categoryRepo: categoryRepo,
 	}
 }
 
@@ -57,6 +62,10 @@ func (s *Service) CreateProduct(req ProductRequest) (*ProductResponse, error) {
 		return nil, err
 	}
 
+	if err := s.ensureCategoryExists(req.Category); err != nil {
+		return nil, err
+	}
+
 	err = s.productRepo.Create(prod)
 	if err != nil {
 		return nil, err
@@ -74,6 +83,10 @@ func (s *Service) UpdateProduct(id uint, req ProductRequest) (*ProductResponse, 
 
 	err = prod.UpdateDetails(req.Name, req.Description, req.Price, req.Stock, req.Image, req.Category)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.ensureCategoryExists(req.Category); err != nil {
 		return nil, err
 	}
 
@@ -105,4 +118,12 @@ func (s *Service) UpdateProductStock(id uint, stock int) error {
 	}
 
 	return s.productRepo.Update(prod)
+}
+
+func (s *Service) ensureCategoryExists(category string) error {
+	if _, err := s.categoryRepo.GetByName(category); err != nil {
+		return ErrCategoryNotFound
+	}
+
+	return nil
 }

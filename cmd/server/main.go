@@ -45,7 +45,7 @@ func main() {
 	// Initialize services
 	authService := auth.NewService(userRepo, passwordHasher, tokenProvider)
 	categoryService := category.NewService(categoryRepo)
-	productService := product.NewService(productRepo)
+	productService := product.NewService(productRepo, categoryRepo)
 	orderService := order.NewService(orderRepo, productRepo)
 
 	// Initialize handlers

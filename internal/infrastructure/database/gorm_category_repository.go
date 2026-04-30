@@ -56,6 +56,15 @@ func (r *GormCategoryRepository) GetByID(id uint) (*category.Category, error) {
 	return r.toDomainCategory(&gormCategory), nil
 }
 
+func (r *GormCategoryRepository) GetByName(name string) (*category.Category, error) {
+	var gormCategory GormCategory
+	if err := r.db.Where("name = ?", name).First(&gormCategory).Error; err != nil {
+		return nil, err
+	}
+
+	return r.toDomainCategory(&gormCategory), nil
+}
+
 func (r *GormCategoryRepository) GetAll() ([]*category.Category, error) {
 	var gormCategories []GormCategory
 	if err := r.db.Find(&gormCategories).Error; err != nil {

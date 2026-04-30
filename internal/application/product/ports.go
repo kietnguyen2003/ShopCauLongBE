@@ -1,6 +1,9 @@
 package product
 
-import domainProduct "kafka-order-demo/backend/internal/domain/product"
+import (
+	domainCategory "kafka-order-demo/backend/internal/domain/category"
+	domainProduct "kafka-order-demo/backend/internal/domain/product"
+)
 
 type ProductRepository interface {
 	Create(product *domainProduct.Product) error
@@ -11,4 +14,8 @@ type ProductRepository interface {
 	Update(product *domainProduct.Product) error
 	Delete(id uint) error
 	UpdateStock(id uint, stock int) error
+}
+
+type CategoryRepository interface {
+	GetByName(name string) (*domainCategory.Category, error)
 }
