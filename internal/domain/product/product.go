@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+const (
+	StatusActive   = "active"
+	StatusInactive = "inactive"
+)
+
 // Product represents the product domain entity
 type Product struct {
 	ID          uint
@@ -14,6 +19,7 @@ type Product struct {
 	Stock       int
 	Image       string
 	Category    string
+	Status      string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -37,6 +43,7 @@ func NewProduct(name, description string, price float64, stock int, image, categ
 		Stock:       stock,
 		Image:       image,
 		Category:    category,
+		Status:      StatusActive,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}, nil
@@ -77,6 +84,12 @@ func (p *Product) UpdateDetails(name, description string, price float64, stock i
 	p.Category = category
 	p.UpdatedAt = time.Now()
 	return nil
+}
+
+// Deactivate marks product as unavailable without deleting its data.
+func (p *Product) Deactivate() {
+	p.Status = StatusInactive
+	p.UpdatedAt = time.Now()
 }
 
 // DecreaseStock decreases product stock by quantity

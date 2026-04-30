@@ -5,11 +5,17 @@ import (
 	"time"
 )
 
+const (
+	StatusActive   = "active"
+	StatusInactive = "inactive"
+)
+
 type Category struct {
 	ID          uint
 	Name        string
 	Description string
 	Image       string
+	Status      string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -23,6 +29,7 @@ func NewCategory(name, description, image string) (*Category, error) {
 		Name:        name,
 		Description: description,
 		Image:       image,
+		Status:      StatusActive,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}, nil
@@ -38,4 +45,9 @@ func (c *Category) Update(name, description, image string) error {
 	c.Image = image
 	c.UpdatedAt = time.Now()
 	return nil
+}
+
+func (c *Category) Deactivate() {
+	c.Status = StatusInactive
+	c.UpdatedAt = time.Now()
 }

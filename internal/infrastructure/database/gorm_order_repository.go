@@ -80,6 +80,7 @@ func (r *GormOrderRepository) CreateWithProductStockUpdates(ord *order.Order, pr
 				Stock:       prod.Stock,
 				Image:       prod.Image,
 				Category:    prod.Category,
+				Status:      productStatus(prod.Status),
 				CreatedAt:   prod.CreatedAt.Unix(),
 				UpdatedAt:   prod.UpdatedAt.Unix(),
 			}

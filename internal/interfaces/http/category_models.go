@@ -22,6 +22,7 @@ type categoryResponse struct {
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	Image       string    `json:"image"`
+	Status      string    `json:"status"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -48,6 +49,7 @@ func toCategoryHTTPResponse(resp appCategory.CategoryResponse) categoryResponse 
 		Name:        resp.Name,
 		Description: resp.Description,
 		Image:       resp.Image,
+		Status:      resp.Status,
 		CreatedAt:   resp.CreatedAt,
 		UpdatedAt:   resp.UpdatedAt,
 	}

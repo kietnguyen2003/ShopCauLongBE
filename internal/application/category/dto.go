@@ -22,6 +22,7 @@ type CategoryResponse struct {
 	Name        string
 	Description string
 	Image       string
+	Status      string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -32,6 +33,7 @@ func toCategoryResponse(category *domainCategory.Category) CategoryResponse {
 		Name:        category.Name,
 		Description: category.Description,
 		Image:       category.Image,
+		Status:      category.Status,
 		CreatedAt:   category.CreatedAt,
 		UpdatedAt:   category.UpdatedAt,
 	}

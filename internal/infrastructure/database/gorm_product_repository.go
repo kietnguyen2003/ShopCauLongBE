@@ -4,6 +4,7 @@ import (
 	appProduct "kafka-order-demo/backend/internal/application/product"
 	"kafka-order-demo/backend/internal/domain/product"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -16,6 +17,7 @@ type GormProduct struct {
 	Stock       int     `gorm:"default:0"`
 	Image       string
 	Category    string
+	Status      string `gorm:"default:active"`
 	CreatedAt   int64
 	UpdatedAt   int64
 }
@@ -42,6 +44,7 @@ func (r *GormProductRepository) Create(prod *product.Product) error {
 		Stock:       prod.Stock,
 		Image:       prod.Image,
 		Category:    prod.Category,
+		Status:      productStatus(prod.Status),
 		CreatedAt:   prod.CreatedAt.Unix(),
 		UpdatedAt:   prod.UpdatedAt.Unix(),
 	}
@@ -57,7 +60,7 @@ func (r *GormProductRepository) Create(prod *product.Product) error {
 
 func (r *GormProductRepository) GetByID(id uint) (*product.Product, error) {
 	var gormProduct GormProduct
-	err := r.db.First(&gormProduct, id).Error
+	err := r.db.Where("id = ? AND (status = ? OR status = '' OR status IS NULL)", id, product.StatusActive).First(&gormProduct).Error
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +70,7 @@ func (r *GormProductRepository) GetByID(id uint) (*product.Product, error) {
 
 func (r *GormProductRepository) GetAll() ([]*product.Product, error) {
 	var gormProducts []GormProduct
-	err := r.db.Find(&gormProducts).Error
+	err := r.db.Where("status = ? OR status = '' OR status IS NULL", product.StatusActive).Find(&gormProducts).Error
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +85,7 @@ func (r *GormProductRepository) GetAll() ([]*product.Product, error) {
 
 func (r *GormProductRepository) GetByCategory(category string) ([]*product.Product, error) {
 	var gormProducts []GormProduct
-	err := r.db.Where("category = ?", category).Find(&gormProducts).Error
+	err := r.db.Where("category = ? AND (status = ? OR status = '' OR status IS NULL)", category, product.StatusActive).Find(&gormProducts).Error
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +102,7 @@ func (r *GormProductRepository) Search(keyword string) ([]*product.Product, erro
 	var gormProducts []GormProduct
 	keyword = strings.ToLower(keyword)
 	query := "%" + keyword + "%"
-	err := r.db.Where("LOWER(name) LIKE ? OR LOWER(description) LIKE ? OR LOWER(category) LIKE ?", query, query, query).Find(&gormProducts).Error
+	err := r.db.Where("(status = ? OR status = '' OR status IS NULL) AND (LOWER(name) LIKE ? OR LOWER(description) LIKE ? OR LOWER(category) LIKE ?)", product.StatusActive, query, query, query).Find(&gormProducts).Error
 	if err != nil {
 		return nil, err
 	}
@@ -121,6 +124,7 @@ func (r *GormProductRepository) Update(prod *product.Product) error {
 		Stock:       prod.Stock,
 		Image:       prod.Image,
 		Category:    prod.Category,
+		Status:      productStatus(prod.Status),
 		CreatedAt:   prod.CreatedAt.Unix(),
 		UpdatedAt:   prod.UpdatedAt.Unix(),
 	}
@@ -129,7 +133,10 @@ func (r *GormProductRepository) Update(prod *product.Product) error {
 }
 
 func (r *GormProductRepository) Delete(id uint) error {
-	return r.db.Delete(&GormProduct{}, id).Error
+	return r.db.Model(&GormProduct{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"status":     product.StatusInactive,
+		"updated_at": time.Now().Unix(),
+	}).Error
 }
 
 func (r *GormProductRepository) UpdateStock(id uint, stock int) error {
@@ -145,7 +152,16 @@ func (r *GormProductRepository) toDomainProduct(gormProduct *GormProduct) *produ
 		Stock:       gormProduct.Stock,
 		Image:       gormProduct.Image,
 		Category:    gormProduct.Category,
+		Status:      productStatus(gormProduct.Status),
 		CreatedAt:   timeFromUnix(gormProduct.CreatedAt),
 		UpdatedAt:   timeFromUnix(gormProduct.UpdatedAt),
 	}
+}
+
+func productStatus(status string) string {
+	if status == "" {
+		return product.StatusActive
+	}
+
+	return status
 }

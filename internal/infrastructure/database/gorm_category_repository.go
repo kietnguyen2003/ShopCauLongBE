@@ -3,6 +3,7 @@ package database
 import (
 	appCategory "kafka-order-demo/backend/internal/application/category"
 	"kafka-order-demo/backend/internal/domain/category"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -12,6 +13,7 @@ type GormCategory struct {
 	Name        string `gorm:"unique;not null"`
 	Description string
 	Image       string
+	Status      string `gorm:"default:active"`
 	CreatedAt   int64
 	UpdatedAt   int64
 }
@@ -35,6 +37,7 @@ func (r *GormCategoryRepository) Create(category *category.Category) error {
 		Name:        category.Name,
 		Description: category.Description,
 		Image:       category.Image,
+		Status:      categoryStatus(category.Status),
 		CreatedAt:   category.CreatedAt.Unix(),
 		UpdatedAt:   category.UpdatedAt.Unix(),
 	}
@@ -49,7 +52,7 @@ func (r *GormCategoryRepository) Create(category *category.Category) error {
 
 func (r *GormCategoryRepository) GetByID(id uint) (*category.Category, error) {
 	var gormCategory GormCategory
-	if err := r.db.First(&gormCategory, id).Error; err != nil {
+	if err := r.db.Where("id = ? AND (status = ? OR status = '' OR status IS NULL)", id, category.StatusActive).First(&gormCategory).Error; err != nil {
 		return nil, err
 	}
 
@@ -58,7 +61,7 @@ func (r *GormCategoryRepository) GetByID(id uint) (*category.Category, error) {
 
 func (r *GormCategoryRepository) GetByName(name string) (*category.Category, error) {
 	var gormCategory GormCategory
-	if err := r.db.Where("name = ?", name).First(&gormCategory).Error; err != nil {
+	if err := r.db.Where("name = ? AND (status = ? OR status = '' OR status IS NULL)", name, category.StatusActive).First(&gormCategory).Error; err != nil {
 		return nil, err
 	}
 
@@ -67,7 +70,7 @@ func (r *GormCategoryRepository) GetByName(name string) (*category.Category, err
 
 func (r *GormCategoryRepository) GetAll() ([]*category.Category, error) {
 	var gormCategories []GormCategory
-	if err := r.db.Find(&gormCategories).Error; err != nil {
+	if err := r.db.Where("status = ? OR status = '' OR status IS NULL", category.StatusActive).Find(&gormCategories).Error; err != nil {
 		return nil, err
 	}
 
@@ -85,6 +88,7 @@ func (r *GormCategoryRepository) Update(category *category.Category) error {
 		Name:        category.Name,
 		Description: category.Description,
 		Image:       category.Image,
+		Status:      categoryStatus(category.Status),
 		CreatedAt:   category.CreatedAt.Unix(),
 		UpdatedAt:   category.UpdatedAt.Unix(),
 	}
@@ -93,7 +97,10 @@ func (r *GormCategoryRepository) Update(category *category.Category) error {
 }
 
 func (r *GormCategoryRepository) Delete(id uint) error {
-	return r.db.Delete(&GormCategory{}, id).Error
+	return r.db.Model(&GormCategory{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"status":     category.StatusInactive,
+		"updated_at": time.Now().Unix(),
+	}).Error
 }
 
 func (r *GormCategoryRepository) toDomainCategory(gormCategory *GormCategory) *category.Category {
@@ -102,7 +109,16 @@ func (r *GormCategoryRepository) toDomainCategory(gormCategory *GormCategory) *c
 		Name:        gormCategory.Name,
 		Description: gormCategory.Description,
 		Image:       gormCategory.Image,
+		Status:      categoryStatus(gormCategory.Status),
 		CreatedAt:   timeFromUnix(gormCategory.CreatedAt),
 		UpdatedAt:   timeFromUnix(gormCategory.UpdatedAt),
 	}
+}
+
+func categoryStatus(status string) string {
+	if status == "" {
+		return category.StatusActive
+	}
+
+	return status
 }

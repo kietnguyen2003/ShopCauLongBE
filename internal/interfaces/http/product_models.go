@@ -13,6 +13,7 @@ type productResponse struct {
 	Stock       int       `json:"stock"`
 	Image       string    `json:"image"`
 	Category    string    `json:"category"`
+	Status      string    `json:"status"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -70,6 +71,7 @@ func toProductHTTPResponse(resp appProduct.ProductResponse) productResponse {
 		Stock:       resp.Stock,
 		Image:       resp.Image,
 		Category:    resp.Category,
+		Status:      resp.Status,
 		CreatedAt:   resp.CreatedAt,
 		UpdatedAt:   resp.UpdatedAt,
 	}

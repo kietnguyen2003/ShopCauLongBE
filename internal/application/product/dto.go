@@ -13,6 +13,7 @@ type ProductResponse struct {
 	Stock       int
 	Image       string
 	Category    string
+	Status      string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -44,6 +45,7 @@ func toProductResponse(prod *domainProduct.Product) ProductResponse {
 		Stock:       prod.Stock,
 		Image:       prod.Image,
 		Category:    prod.Category,
+		Status:      prod.Status,
 		CreatedAt:   prod.CreatedAt,
 		UpdatedAt:   prod.UpdatedAt,
 	}
