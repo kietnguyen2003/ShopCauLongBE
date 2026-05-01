@@ -1039,21 +1039,13 @@ Authorization: Bearer <token>
 
 Request body:
 {
-  "customer_name": "Nguyen Van A",
-  "phone": "0909123456",
-  "address": "Quan 1, TP.HCM",
-  "email": "vana@example.com",
-  "items": [
-    {
-      "product_id": 1,
-      "quantity": 2
-    },
-    {
-      "product_id": 3,
-      "quantity": 1
-    }
-  ]
+  "address_id": 1
 }
+
+Ghi chu:
+Backend se lay thong tin customer_name, phone, address, email tu address_id cua user hien tai.
+Backend se lay san pham tu gio hang hien tai cua user de tao order.
+Tao order thanh cong thi backend se clear gio hang.
 
 Response thanh cong:
 HTTP status: 201 Created
@@ -1093,7 +1085,7 @@ HTTP status: 400 Bad Request hoac 401 Unauthorized
 
 {
   "code": 400,
-  "msg": "Error message",
+  "msg": "address not found",
   "data": null
 }
 
@@ -1520,6 +1512,234 @@ HTTP status: 401 Unauthorized hoac 500 Internal Server Error
 {
   "code": 401,
   "msg": "User not authenticated",
+  "data": null
+}
+
+
+32. Lay danh sach dia chi
+-------------------------
+Method:
+GET
+
+URL:
+/api/addresses
+
+Header:
+Accept: application/json
+Authorization: Bearer <token>
+
+Request body:
+Khong co
+
+Response thanh cong:
+HTTP status: 200 OK
+
+{
+  "code": 200,
+  "msg": "Get addresses successfully",
+  "data": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "customer_name": "Nguyen Van A",
+      "phone": "0909123456",
+      "address": "Quan 1, TP.HCM",
+      "email": "vana@example.com",
+      "is_default": true,
+      "created_at": "2026-04-29T10:00:00Z",
+      "updated_at": "2026-04-29T10:00:00Z"
+    }
+  ]
+}
+
+Response loi:
+HTTP status: 401 Unauthorized hoac 500 Internal Server Error
+
+{
+  "code": 401,
+  "msg": "User not authenticated",
+  "data": null
+}
+
+
+33. Tao dia chi
+---------------
+Method:
+POST
+
+URL:
+/api/addresses
+
+Header:
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer <token>
+
+Request body:
+{
+  "customer_name": "Nguyen Van A",
+  "phone": "0909123456",
+  "address": "Quan 1, TP.HCM",
+  "email": "vana@example.com",
+  "is_default": true
+}
+
+Ghi chu:
+Dia chi dau tien cua user se tu dong duoc dat lam mac dinh.
+
+Response thanh cong:
+HTTP status: 201 Created
+
+{
+  "code": 201,
+  "msg": "Create address successfully",
+  "data": {
+    "id": 1,
+    "user_id": 1,
+    "customer_name": "Nguyen Van A",
+    "phone": "0909123456",
+    "address": "Quan 1, TP.HCM",
+    "email": "vana@example.com",
+    "is_default": true,
+    "created_at": "2026-04-29T10:00:00Z",
+    "updated_at": "2026-04-29T10:00:00Z"
+  }
+}
+
+Response loi:
+HTTP status: 400 Bad Request hoac 401 Unauthorized
+
+{
+  "code": 400,
+  "msg": "customer name cannot be empty",
+  "data": null
+}
+
+
+34. Sua dia chi
+---------------
+Method:
+PUT
+
+URL:
+/api/addresses/:id
+
+Vi du:
+/api/addresses/1
+
+Header:
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer <token>
+
+Request body:
+{
+  "phone": "0909000000",
+  "address": "Quan 3, TP.HCM"
+}
+
+Ghi chu:
+Co the update rieng le tung field: customer_name, phone, address, email.
+
+Response thanh cong:
+HTTP status: 200 OK
+
+{
+  "code": 200,
+  "msg": "Update address successfully",
+  "data": {
+    "id": 1,
+    "user_id": 1,
+    "customer_name": "Nguyen Van A",
+    "phone": "0909000000",
+    "address": "Quan 3, TP.HCM",
+    "email": "vana@example.com",
+    "is_default": true,
+    "created_at": "2026-04-29T10:00:00Z",
+    "updated_at": "2026-04-29T10:05:00Z"
+  }
+}
+
+Response loi:
+HTTP status: 400 Bad Request hoac 401 Unauthorized
+
+{
+  "code": 400,
+  "msg": "address not found",
+  "data": null
+}
+
+
+35. Xoa dia chi
+---------------
+Method:
+DELETE
+
+URL:
+/api/addresses/:id
+
+Vi du:
+/api/addresses/1
+
+Header:
+Accept: application/json
+Authorization: Bearer <token>
+
+Request body:
+Khong co
+
+Response thanh cong:
+HTTP status: 200 OK
+
+{
+  "code": 200,
+  "msg": "Delete address successfully",
+  "data": null
+}
+
+Response loi:
+HTTP status: 400 Bad Request hoac 401 Unauthorized
+
+{
+  "code": 400,
+  "msg": "address not found",
+  "data": null
+}
+
+
+36. Dat dia chi mac dinh
+------------------------
+Method:
+PATCH
+
+URL:
+/api/addresses/:id/default
+
+Vi du:
+/api/addresses/1/default
+
+Header:
+Accept: application/json
+Authorization: Bearer <token>
+
+Request body:
+Khong co
+
+Response thanh cong:
+HTTP status: 200 OK
+
+{
+  "code": 200,
+  "msg": "Set default address successfully",
+  "data": null
+}
+
+Response loi:
+HTTP status: 400 Bad Request hoac 401 Unauthorized
+
+{
+  "code": 400,
+  "msg": "address not found",
   "data": null
 }
 

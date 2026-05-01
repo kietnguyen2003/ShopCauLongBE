@@ -1,6 +1,8 @@
 package order
 
 import (
+	domainAddress "kafka-order-demo/backend/internal/domain/address"
+	domainCart "kafka-order-demo/backend/internal/domain/cart"
 	domainOrder "kafka-order-demo/backend/internal/domain/order"
 	domainProduct "kafka-order-demo/backend/internal/domain/product"
 )
@@ -18,4 +20,13 @@ type OrderRepository interface {
 
 type ProductRepository interface {
 	GetByID(id uint) (*domainProduct.Product, error)
+}
+
+type AddressRepository interface {
+	GetByIDAndUserID(id, userID uint) (*domainAddress.Address, error)
+}
+
+type CartRepository interface {
+	GetByUserID(userID uint) ([]*domainCart.CartItem, error)
+	Clear(userID uint) error
 }

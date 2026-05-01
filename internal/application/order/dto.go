@@ -7,6 +7,7 @@ import (
 
 type CreateOrderRequest struct {
 	UserID       uint
+	AddressID    uint
 	CustomerName string
 	Phone        string
 	Address      string

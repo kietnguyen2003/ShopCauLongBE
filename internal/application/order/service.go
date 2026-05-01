@@ -11,16 +11,44 @@ import (
 type Service struct {
 	orderRepo   OrderRepository
 	productRepo ProductRepository
+	addressRepo AddressRepository
+	cartRepo    CartRepository
 }
 
-func NewService(orderRepo OrderRepository, productRepo ProductRepository) *Service {
+func NewService(orderRepo OrderRepository, productRepo ProductRepository, addressRepo AddressRepository, cartRepo CartRepository) *Service {
 	return &Service{
 		orderRepo:   orderRepo,
 		productRepo: productRepo,
+		addressRepo: addressRepo,
+		cartRepo:    cartRepo,
 	}
 }
 
 func (s *Service) CreateOrder(req CreateOrderRequest) (*OrderResponse, error) {
+	if req.AddressID != 0 {
+		address, err := s.addressRepo.GetByIDAndUserID(req.AddressID, req.UserID)
+		if err != nil {
+			return nil, errors.New("address not found")
+		}
+
+		req.CustomerName = address.CustomerName
+		req.Phone = address.Phone
+		req.Address = address.Address
+		req.Email = address.Email
+
+		cartItems, err := s.cartRepo.GetByUserID(req.UserID)
+		if err != nil {
+			return nil, err
+		}
+		req.Items = make([]CreateOrderItemRequest, len(cartItems))
+		for i, item := range cartItems {
+			req.Items[i] = CreateOrderItemRequest{
+				ProductID: item.ProductID,
+				Quantity:  item.Quantity,
+			}
+		}
+	}
+
 	// Create order
 	ord, err := domainOrder.NewOrder(req.UserID, req.CustomerName, req.Phone, req.Address, req.Email)
 	if err != nil {
@@ -76,6 +104,12 @@ func (s *Service) CreateOrder(req CreateOrderRequest) (*OrderResponse, error) {
 	err = s.orderRepo.CreateWithProductStockUpdates(ord, productsToUpdate)
 	if err != nil {
 		return nil, err
+	}
+
+	if req.AddressID != 0 {
+		if err := s.cartRepo.Clear(req.UserID); err != nil {
+			return nil, err
+		}
 	}
 
 	response := toOrderResponse(ord)

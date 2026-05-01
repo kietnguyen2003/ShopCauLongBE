@@ -24,6 +24,10 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		errorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
+	if req.AddressID == 0 {
+		errorResponse(c, http.StatusBadRequest, "address_id is required")
+		return
+	}
 
 	// Get user ID from auth middleware
 	userID, exists := c.Get("user_id")

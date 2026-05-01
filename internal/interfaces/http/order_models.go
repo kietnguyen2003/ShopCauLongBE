@@ -7,16 +7,7 @@ import (
 )
 
 type createOrderRequest struct {
-	CustomerName string                   `json:"customer_name"`
-	Phone        string                   `json:"phone"`
-	Address      string                   `json:"address"`
-	Email        string                   `json:"email"`
-	Items        []createOrderItemRequest `json:"items"`
-}
-
-type createOrderItemRequest struct {
-	ProductID uint `json:"product_id"`
-	Quantity  int  `json:"quantity"`
+	AddressID uint `json:"address_id"`
 }
 
 type updateOrderStatusRequest struct {
@@ -50,21 +41,9 @@ type orderResponse struct {
 }
 
 func toCreateOrderInput(req createOrderRequest, userID uint) appOrder.CreateOrderRequest {
-	items := make([]appOrder.CreateOrderItemRequest, len(req.Items))
-	for i, item := range req.Items {
-		items[i] = appOrder.CreateOrderItemRequest{
-			ProductID: item.ProductID,
-			Quantity:  item.Quantity,
-		}
-	}
-
 	return appOrder.CreateOrderRequest{
-		UserID:       userID,
-		CustomerName: req.CustomerName,
-		Phone:        req.Phone,
-		Address:      req.Address,
-		Email:        req.Email,
-		Items:        items,
+		UserID:    userID,
+		AddressID: req.AddressID,
 	}
 }
 

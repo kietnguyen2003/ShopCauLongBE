@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"kafka-order-demo/backend/internal/application/address"
 	"kafka-order-demo/backend/internal/application/auth"
 	"kafka-order-demo/backend/internal/application/cart"
 	"kafka-order-demo/backend/internal/application/category"
@@ -37,6 +38,7 @@ func main() {
 
 	// Initialize repositories
 	userRepo := database.NewGormUserRepository(db)
+	addressRepo := database.NewGormAddressRepository(db)
 	cartRepo := database.NewGormCartRepository(db)
 	categoryRepo := database.NewGormCategoryRepository(db)
 	productRepo := database.NewGormProductRepository(db)
@@ -45,13 +47,15 @@ func main() {
 	tokenProvider := security.NewJWTProvider(cfg.JWTSecret)
 
 	// Initialize services
+	addressService := address.NewService(addressRepo)
 	authService := auth.NewService(userRepo, passwordHasher, tokenProvider)
 	cartService := cart.NewService(cartRepo, productRepo)
 	categoryService := category.NewService(categoryRepo)
 	productService := product.NewService(productRepo, categoryRepo)
-	orderService := order.NewService(orderRepo, productRepo)
+	orderService := order.NewService(orderRepo, productRepo, addressRepo, cartRepo)
 
 	// Initialize handlers
+	addressHandler := httpHandlers.NewAddressHandler(addressService)
 	authHandler := httpHandlers.NewAuthHandler(authService, tokenProvider)
 	cartHandler := httpHandlers.NewCartHandler(cartService)
 	categoryHandler := httpHandlers.NewCategoryHandler(categoryService)
@@ -64,19 +68,19 @@ func main() {
 	// CORS middleware
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:3001"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		AllowCredentials: true,
 	}))
 
 	// Setup routes
-	setupRoutes(r, authHandler, cartHandler, orderHandler, productHandler, categoryHandler)
+	setupRoutes(r, addressHandler, authHandler, cartHandler, orderHandler, productHandler, categoryHandler)
 
 	log.Printf("Server starting on port %s", cfg.Port)
 	log.Fatal(r.Run(":" + cfg.Port))
 }
 
-func setupRoutes(r *gin.Engine, authHandler *httpHandlers.AuthHandler, cartHandler *httpHandlers.CartHandler, orderHandler *httpHandlers.OrderHandler, productHandler *httpHandlers.ProductHandler, categoryHandler *httpHandlers.CategoryHandler) {
+func setupRoutes(r *gin.Engine, addressHandler *httpHandlers.AddressHandler, authHandler *httpHandlers.AuthHandler, cartHandler *httpHandlers.CartHandler, orderHandler *httpHandlers.OrderHandler, productHandler *httpHandlers.ProductHandler, categoryHandler *httpHandlers.CategoryHandler) {
 	// Auth routes
 	auth := r.Group("/auth")
 	{
@@ -105,6 +109,11 @@ func setupRoutes(r *gin.Engine, authHandler *httpHandlers.AuthHandler, cartHandl
 	api.Use(authHandler.AuthMiddleware())
 	{
 		// User routes
+		api.GET("/addresses", addressHandler.GetAddresses)
+		api.POST("/addresses", addressHandler.CreateAddress)
+		api.PUT("/addresses/:id", addressHandler.UpdateAddress)
+		api.DELETE("/addresses/:id", addressHandler.DeleteAddress)
+		api.PATCH("/addresses/:id/default", addressHandler.SetDefaultAddress)
 		api.GET("/cart", cartHandler.GetCart)
 		api.POST("/cart/items", cartHandler.AddItem)
 		api.PUT("/cart/items/:id", cartHandler.UpdateItem)
