@@ -4,6 +4,7 @@ import (
 	appOrder "kafka-order-demo/backend/internal/application/order"
 	"kafka-order-demo/backend/internal/domain/order"
 	"kafka-order-demo/backend/internal/domain/product"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -149,12 +150,52 @@ func (r *GormOrderRepository) Update(ord *order.Order) error {
 	return r.db.Save(gormOrder).Error
 }
 
+func (r *GormOrderRepository) UpdateWithProductRestock(ord *order.Order) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		gormOrder := r.toGormOrder(ord)
+		if err := restockOrderItems(tx, gormOrder.OrderItems); err != nil {
+			return err
+		}
+
+		return tx.Model(&GormOrder{}).
+			Where("id = ?", gormOrder.ID).
+			Updates(map[string]interface{}{
+				"status":     gormOrder.Status,
+				"updated_at": gormOrder.UpdatedAt,
+			}).Error
+	})
+}
+
 func (r *GormOrderRepository) Delete(id uint) error {
 	return r.db.Select("OrderItems").Delete(&GormOrder{ID: id}).Error
 }
 
 func (r *GormOrderRepository) DeleteAll() error {
 	return r.db.Exec("DELETE FROM order_items; DELETE FROM orders;").Error
+}
+
+func restockOrderItems(tx *gorm.DB, orderItems []GormOrderItem) error {
+	quantitiesByProductID := make(map[uint]int)
+	for _, item := range orderItems {
+		quantitiesByProductID[item.ProductID] += item.Quantity
+	}
+
+	for productID, quantity := range quantitiesByProductID {
+		result := tx.Model(&GormProduct{}).
+			Where("id = ?", productID).
+			Updates(map[string]interface{}{
+				"stock":      gorm.Expr("stock + ?", quantity),
+				"updated_at": time.Now().Unix(),
+			})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+	}
+
+	return nil
 }
 
 func (r *GormOrderRepository) toGormOrder(ord *order.Order) *GormOrder {

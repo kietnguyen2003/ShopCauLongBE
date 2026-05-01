@@ -14,6 +14,7 @@ type OrderRepository interface {
 	GetByUserID(userID uint) ([]*domainOrder.Order, error)
 	GetAll() ([]*domainOrder.Order, error)
 	Update(order *domainOrder.Order) error
+	UpdateWithProductRestock(order *domainOrder.Order) error
 	Delete(id uint) error
 	DeleteAll() error
 }

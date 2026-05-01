@@ -1,0 +1,1282 @@
+{
+  "title": "Shop Cau Long API Documentation",
+  "base_url": "http://localhost:<PORT>",
+  "response_format": {
+    "success": {
+      "code": 200,
+      "msg": "Message",
+      "data": {}
+    },
+    "error": {
+      "code": 400,
+      "msg": "Error message",
+      "data": null
+    }
+  },
+  "common_headers": {
+    "Content-Type": "application/json",
+    "Accept": "application/json"
+  },
+  "auth_header": {
+    "Authorization": "Bearer <token>"
+  },
+  "auth_errors": {
+    "missing_authorization": {
+      "code": 401,
+      "msg": "Authorization header required",
+      "data": null
+    },
+    "invalid_token": {
+      "code": 401,
+      "msg": "Invalid token",
+      "data": null
+    }
+  },
+  "endpoints": [
+    {
+      "id": 1,
+      "name": "Dang ky tai khoan",
+      "method": "POST",
+      "path": "/auth/register",
+      "auth_required": false,
+      "request_body": {
+        "username": "user01",
+        "email": "user01@example.com",
+        "password": "123456"
+      },
+      "responses": {
+        "success": {
+          "status": 201,
+          "body": {
+            "code": 201,
+            "msg": "Register successfully",
+            "data": {
+              "token": "<jwt_token>",
+              "user": {
+                "id": 1,
+                "username": "user01",
+                "email": "user01@example.com",
+                "is_admin": false
+              }
+            }
+          }
+        },
+        "error": {
+          "status": 400,
+          "body": {
+            "code": 400,
+            "msg": "Error message",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "name": "Dang nhap user",
+      "method": "POST",
+      "path": "/auth/login",
+      "auth_required": false,
+      "request_body": {
+        "username": "user01",
+        "password": "123456"
+      },
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Login successfully",
+            "data": {
+              "token": "<jwt_token>",
+              "user": {
+                "id": 1,
+                "username": "user01",
+                "email": "user01@example.com",
+                "is_admin": false
+              }
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401",
+          "body": {
+            "code": 401,
+            "msg": "Error message",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "name": "Dang nhap admin",
+      "method": "POST",
+      "path": "/auth/admin-login",
+      "auth_required": false,
+      "request_body": {
+        "username": "admin",
+        "password": "password"
+      },
+      "notes": [
+        "Tai khoan admin seed mac dinh: username admin, email admin@demo.com, password password"
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Admin login successfully",
+            "data": {
+              "token": "<jwt_token>",
+              "user": {
+                "id": 1,
+                "username": "admin",
+                "email": "admin@demo.com",
+                "is_admin": true
+              }
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401",
+          "body": {
+            "code": 401,
+            "msg": "Error message",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "name": "Lay thong tin user hien tai",
+      "method": "GET",
+      "path": "/auth/me",
+      "auth_required": true,
+      "request_body": null,
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get current user successfully",
+            "data": {
+              "id": 1,
+              "username": "user01",
+              "email": "user01@example.com",
+              "is_admin": false
+            }
+          }
+        },
+        "error": {
+          "status": "401 or 404",
+          "body": {
+            "code": 401,
+            "msg": "Invalid token",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "name": "Dang xuat",
+      "method": "POST",
+      "path": "/auth/logout",
+      "auth_required": true,
+      "request_body": null,
+      "notes": [
+        "JWT hien tai la stateless token, frontend nen xoa token o localStorage/cookie sau khi logout."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Logout successfully",
+            "data": null
+          }
+        },
+        "error": {
+          "status": 401,
+          "body": {
+            "code": 401,
+            "msg": "Invalid token",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "name": "Cap access token moi",
+      "method": "POST",
+      "path": "/auth/refresh-token",
+      "auth_required": true,
+      "request_body": null,
+      "notes": [
+        "Dung token hien tai con hop le de cap token moi."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Refresh token successfully",
+            "data": {
+              "token": "<new_jwt_token>",
+              "user": {
+                "id": 1,
+                "username": "user01",
+                "email": "user01@example.com",
+                "is_admin": false
+              }
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401",
+          "body": {
+            "code": 401,
+            "msg": "Invalid token",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "name": "Doi mat khau",
+      "method": "PUT",
+      "path": "/auth/change-password",
+      "auth_required": true,
+      "request_body": {
+        "old_password": "123456",
+        "new_password": "new-password-123"
+      },
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Change password successfully",
+            "data": null
+          }
+        },
+        "error": {
+          "status": "400 or 401",
+          "body": {
+            "code": 400,
+            "msg": "old password is incorrect",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 8,
+      "name": "Quen mat khau",
+      "method": "POST",
+      "path": "/auth/forgot-password",
+      "auth_required": false,
+      "request_body": {
+        "email": "user01@example.com"
+      },
+      "notes": [
+        "Backend hien tai chua tich hop email service, nen API tra reset_token truc tiep de test."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Forgot password successfully",
+            "data": {
+              "reset_token": "<reset_token>"
+            }
+          }
+        },
+        "error": {
+          "status": 400,
+          "body": {
+            "code": 400,
+            "msg": "email not found",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 9,
+      "name": "Reset mat khau",
+      "method": "POST",
+      "path": "/auth/reset-password",
+      "auth_required": false,
+      "request_body": {
+        "reset_token": "<reset_token>",
+        "new_password": "new-password-123"
+      },
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Reset password successfully",
+            "data": null
+          }
+        },
+        "error": {
+          "status": 400,
+          "body": {
+            "code": 400,
+            "msg": "invalid reset token",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "name": "Lay danh sach san pham",
+      "method": "GET",
+      "path": "/api/products",
+      "auth_required": false,
+      "query_params": {
+        "page": {
+          "type": "integer",
+          "default": 1
+        },
+        "limit": {
+          "type": "integer",
+          "default": 12,
+          "max": 100
+        },
+        "search": {
+          "type": "string",
+          "description": "Tu khoa tim theo name hoac description"
+        },
+        "category": {
+          "type": "string",
+          "example": "racket"
+        },
+        "min_price": {
+          "type": "number"
+        },
+        "max_price": {
+          "type": "number"
+        },
+        "sort": {
+          "type": "string",
+          "enum": [
+            "price_asc",
+            "price_desc",
+            "name_asc",
+            "name_desc",
+            "newest",
+            "oldest"
+          ]
+        }
+      },
+      "example_url": "/api/products?page=1&limit=12&search=yonex&category=racket&min_price=500000&max_price=3000000&sort=price_asc",
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get products successfully",
+            "data": {
+              "items": [
+                {
+                  "id": 1,
+                  "name": "Ao Cau Long Yonex Pro",
+                  "description": "Mo ta san pham",
+                  "price": 450000,
+                  "stock": 20,
+                  "image": "https://example.com/image.png",
+                  "category": "clothing",
+                  "status": "active",
+                  "created_at": "2026-04-29T10:00:00Z",
+                  "updated_at": "2026-04-29T10:00:00Z"
+                }
+              ],
+              "page": 1,
+              "limit": 12,
+              "total": 1,
+              "total_pages": 1
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 500",
+          "body": {
+            "code": 400,
+            "msg": "page must be a positive integer",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 11,
+      "name": "Lay chi tiet san pham",
+      "method": "GET",
+      "path": "/api/products/:id",
+      "auth_required": false,
+      "path_params": {
+        "id": "Product ID"
+      },
+      "example_url": "/api/products/1",
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get product successfully",
+            "data": {
+              "id": 1,
+              "name": "Ao Cau Long Yonex Pro",
+              "description": "Mo ta san pham",
+              "price": 450000,
+              "stock": 20,
+              "image": "https://example.com/image.png",
+              "category": "clothing",
+              "created_at": "2026-04-29T10:00:00Z",
+              "updated_at": "2026-04-29T10:00:00Z"
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 404",
+          "body": {
+            "code": 404,
+            "msg": "Product not found",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 12,
+      "name": "Tim kiem san pham",
+      "method": "GET",
+      "path": "/api/products/search",
+      "auth_required": false,
+      "query_params": {
+        "q": "Tu khoa tim theo name, description hoac category"
+      },
+      "example_url": "/api/products/search?q=yonex",
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Search products successfully",
+            "data": []
+          }
+        },
+        "error": {
+          "status": 500,
+          "body": {
+            "code": 500,
+            "msg": "Error message",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 13,
+      "name": "Lay san pham theo danh muc",
+      "method": "GET",
+      "path": "/api/products/category/:category",
+      "auth_required": false,
+      "path_params": {
+        "category": "Ten danh muc cua san pham"
+      },
+      "example_url": "/api/products/category/clothing",
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get products by category successfully",
+            "data": []
+          }
+        },
+        "error": {
+          "status": 500,
+          "body": {
+            "code": 500,
+            "msg": "Error message",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 14,
+      "name": "Admin tao san pham",
+      "method": "POST",
+      "path": "/api/admin/products",
+      "auth_required": true,
+      "admin_required": true,
+      "request_body": {
+        "name": "Vot Cau Long Yonex",
+        "description": "Mo ta san pham",
+        "price": 1500000,
+        "stock": 10,
+        "image": "https://example.com/product.png",
+        "category": "racket"
+      },
+      "responses": {
+        "success": {
+          "status": 201,
+          "body": {
+            "code": 201,
+            "msg": "Create product successfully",
+            "data": {
+              "id": 1
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 403",
+          "body": {
+            "code": 400,
+            "msg": "category not found",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 15,
+      "name": "Admin cap nhat san pham",
+      "method": "PUT",
+      "path": "/api/admin/products/:id",
+      "auth_required": true,
+      "admin_required": true,
+      "path_params": {
+        "id": "Product ID"
+      },
+      "request_body": {
+        "name": "Ten moi",
+        "category": "racket"
+      },
+      "notes": [
+        "Co the update rieng le tung field."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Update product successfully",
+            "data": {
+              "id": 1
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 403",
+          "body": {
+            "code": 400,
+            "msg": "Invalid product ID",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 16,
+      "name": "Admin xoa san pham",
+      "method": "DELETE",
+      "path": "/api/admin/products/:id",
+      "auth_required": true,
+      "admin_required": true,
+      "path_params": {
+        "id": "Product ID"
+      },
+      "notes": [
+        "Soft delete: set product status thanh inactive."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Delete product successfully",
+            "data": null
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 403",
+          "body": {
+            "code": 400,
+            "msg": "Invalid product ID",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 17,
+      "name": "Admin cap nhat ton kho",
+      "method": "PATCH",
+      "path": "/api/admin/products/:id/stock",
+      "auth_required": true,
+      "admin_required": true,
+      "request_body": {
+        "stock": 25
+      },
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Update product stock successfully",
+            "data": null
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 403",
+          "body": {
+            "code": 400,
+            "msg": "stock cannot be negative",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 18,
+      "name": "Lay danh sach danh muc",
+      "method": "GET",
+      "path": "/api/categories",
+      "auth_required": false,
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get categories successfully",
+            "data": []
+          }
+        },
+        "error": {
+          "status": 500,
+          "body": {
+            "code": 500,
+            "msg": "Error message",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 19,
+      "name": "Chi tiet danh muc",
+      "method": "GET",
+      "path": "/api/categories/:id",
+      "auth_required": false,
+      "path_params": {
+        "id": "Category ID"
+      },
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get category successfully",
+            "data": {
+              "id": 1,
+              "name": "racket",
+              "description": "Vot cau long",
+              "image": "https://example.com/category.png"
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 404",
+          "body": {
+            "code": 404,
+            "msg": "Category not found",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 20,
+      "name": "Admin tao danh muc",
+      "method": "POST",
+      "path": "/api/admin/categories",
+      "auth_required": true,
+      "admin_required": true,
+      "request_body": {
+        "name": "shoes",
+        "description": "Giay cau long",
+        "image": "https://example.com/category-shoes.png"
+      },
+      "responses": {
+        "success": {
+          "status": 201,
+          "body": {
+            "code": 201,
+            "msg": "Create category successfully",
+            "data": {
+              "id": 1
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 403",
+          "body": {
+            "code": 400,
+            "msg": "category name cannot be empty",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 21,
+      "name": "Admin sua danh muc",
+      "method": "PUT",
+      "path": "/api/admin/categories/:id",
+      "auth_required": true,
+      "admin_required": true,
+      "request_body": {
+        "description": "Mo ta moi"
+      },
+      "notes": [
+        "Co the update rieng le tung field."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Update category successfully",
+            "data": {
+              "id": 1
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 403",
+          "body": {
+            "code": 400,
+            "msg": "Invalid category ID",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 22,
+      "name": "Admin xoa danh muc",
+      "method": "DELETE",
+      "path": "/api/admin/categories/:id",
+      "auth_required": true,
+      "admin_required": true,
+      "notes": [
+        "Soft delete: set category status thanh inactive."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Delete category successfully",
+            "data": null
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 403",
+          "body": {
+            "code": 400,
+            "msg": "Invalid category ID",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 23,
+      "name": "Tao don hang",
+      "method": "POST",
+      "path": "/api/orders",
+      "auth_required": true,
+      "request_body": {
+        "address_id": 1
+      },
+      "notes": [
+        "Backend lay thong tin nguoi nhan tu address_id cua user hien tai.",
+        "Backend lay san pham tu gio hang hien tai.",
+        "Tao order thanh cong thi backend clear gio hang."
+      ],
+      "responses": {
+        "success": {
+          "status": 201,
+          "body": {
+            "code": 201,
+            "msg": "Create order successfully",
+            "data": {
+              "id": 1,
+              "user_id": 1,
+              "order_items": [],
+              "total_amount": 900000,
+              "status": "pending",
+              "customer_name": "Nguyen Van A",
+              "phone": "0909123456",
+              "address": "Quan 1, TP.HCM",
+              "email": "vana@example.com",
+              "created_at": "2026-04-29T10:00:00Z",
+              "updated_at": "2026-04-29T10:00:00Z"
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401",
+          "body": {
+            "code": 400,
+            "msg": "address not found",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 24,
+      "name": "Lay don hang cua user dang dang nhap",
+      "method": "GET",
+      "path": "/api/orders",
+      "auth_required": true,
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get orders successfully",
+            "data": []
+          }
+        },
+        "error": {
+          "status": "401 or 500",
+          "body": {
+            "code": 401,
+            "msg": "User not authenticated",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 25,
+      "name": "Admin lay tat ca don hang",
+      "method": "GET",
+      "path": "/api/admin/orders",
+      "auth_required": true,
+      "admin_required": true,
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get all orders successfully",
+            "data": []
+          }
+        },
+        "error": {
+          "status": "401 or 403 or 500",
+          "body": {
+            "code": 403,
+            "msg": "Admin access required",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 26,
+      "name": "Admin cap nhat trang thai don hang",
+      "method": "PUT",
+      "path": "/api/admin/orders/:id",
+      "auth_required": true,
+      "admin_required": true,
+      "request_body": {
+        "status": "confirmed"
+      },
+      "notes": [
+        "Status hop le: pending, confirmed, cancelled",
+        "Don pending co the doi sang confirmed hoac cancelled. Don confirmed/cancelled khong the doi tiep."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Order status updated successfully",
+            "data": null
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 403",
+          "body": {
+            "code": 400,
+            "msg": "Invalid order ID",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 27,
+      "name": "Lay gio hang cua user",
+      "method": "GET",
+      "path": "/api/cart",
+      "auth_required": true,
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get cart successfully",
+            "data": {
+              "items": [
+                {
+                  "id": 1,
+                  "product_id": 1,
+                  "name": "Ao Cau Long Yonex Pro",
+                  "description": "Mo ta san pham",
+                  "price": 450000,
+                  "quantity": 2,
+                  "image": "https://example.com/image.png",
+                  "subtotal": 900000,
+                  "created_at": "2026-04-29T10:00:00Z",
+                  "updated_at": "2026-04-29T10:00:00Z"
+                }
+              ],
+              "total_amount": 900000,
+              "total_items": 2
+            }
+          }
+        },
+        "error": {
+          "status": "401 or 500",
+          "body": {
+            "code": 401,
+            "msg": "User not authenticated",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 28,
+      "name": "Them san pham vao gio hang",
+      "method": "POST",
+      "path": "/api/cart/items",
+      "auth_required": true,
+      "request_body": {
+        "items": [
+          {
+            "product_id": 1,
+            "quantity": 2
+          },
+          {
+            "product_id": 2,
+            "quantity": 1
+          }
+        ]
+      },
+      "notes": [
+        "Neu product da co trong gio hang thi backend cong them quantity.",
+        "Co the gui 1 hoac nhieu product trong mang items.",
+        "Neu tong quantity lon hon stock hien tai thi API tra loi."
+      ],
+      "responses": {
+        "success": {
+          "status": 201,
+          "body": {
+            "code": 201,
+            "msg": "Add cart item successfully",
+            "data": {
+              "items": [],
+              "total_amount": 900000,
+              "total_items": 2
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401",
+          "body": {
+            "code": 400,
+            "msg": "sản phẩm Ao Cau Long Yonex Pro không còn đủ hàng",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 29,
+      "name": "Cap nhat so luong item trong gio hang",
+      "method": "PUT",
+      "path": "/api/cart/items/:id",
+      "auth_required": true,
+      "path_params": {
+        "id": "Cart item ID, khong phai product_id"
+      },
+      "request_body": {
+        "quantity": 3
+      },
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Update cart item successfully",
+            "data": {
+              "items": [],
+              "total_amount": 1350000,
+              "total_items": 3
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401",
+          "body": {
+            "code": 400,
+            "msg": "cart item not found",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 30,
+      "name": "Xoa item khoi gio hang",
+      "method": "DELETE",
+      "path": "/api/cart/items/:id",
+      "auth_required": true,
+      "path_params": {
+        "id": "Cart item ID, khong phai product_id"
+      },
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Delete cart item successfully",
+            "data": {
+              "items": [],
+              "total_amount": 0,
+              "total_items": 0
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401",
+          "body": {
+            "code": 400,
+            "msg": "cart item not found",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 31,
+      "name": "Xoa toan bo gio hang",
+      "method": "DELETE",
+      "path": "/api/cart/clear",
+      "auth_required": true,
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Clear cart successfully",
+            "data": null
+          }
+        },
+        "error": {
+          "status": "401 or 500",
+          "body": {
+            "code": 401,
+            "msg": "User not authenticated",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 32,
+      "name": "Lay danh sach dia chi",
+      "method": "GET",
+      "path": "/api/addresses",
+      "auth_required": true,
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get addresses successfully",
+            "data": [
+              {
+                "id": 1,
+                "user_id": 1,
+                "customer_name": "Nguyen Van A",
+                "phone": "0909123456",
+                "address": "Quan 1, TP.HCM",
+                "email": "vana@example.com",
+                "is_default": true,
+                "created_at": "2026-04-29T10:00:00Z",
+                "updated_at": "2026-04-29T10:00:00Z"
+              }
+            ]
+          }
+        },
+        "error": {
+          "status": "401 or 500",
+          "body": {
+            "code": 401,
+            "msg": "User not authenticated",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 33,
+      "name": "Tao dia chi",
+      "method": "POST",
+      "path": "/api/addresses",
+      "auth_required": true,
+      "request_body": {
+        "customer_name": "Nguyen Van A",
+        "phone": "0909123456",
+        "address": "Quan 1, TP.HCM",
+        "email": "vana@example.com",
+        "is_default": true
+      },
+      "notes": [
+        "Dia chi dau tien cua user se tu dong duoc dat lam mac dinh."
+      ],
+      "responses": {
+        "success": {
+          "status": 201,
+          "body": {
+            "code": 201,
+            "msg": "Create address successfully",
+            "data": {
+              "id": 1,
+              "user_id": 1,
+              "customer_name": "Nguyen Van A",
+              "phone": "0909123456",
+              "address": "Quan 1, TP.HCM",
+              "email": "vana@example.com",
+              "is_default": true
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401",
+          "body": {
+            "code": 400,
+            "msg": "customer name cannot be empty",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 34,
+      "name": "Sua dia chi",
+      "method": "PUT",
+      "path": "/api/addresses/:id",
+      "auth_required": true,
+      "request_body": {
+        "phone": "0909000000",
+        "address": "Quan 3, TP.HCM"
+      },
+      "notes": [
+        "Co the update rieng le tung field: customer_name, phone, address, email."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Update address successfully",
+            "data": {
+              "id": 1,
+              "phone": "0909000000",
+              "address": "Quan 3, TP.HCM"
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401",
+          "body": {
+            "code": 400,
+            "msg": "address not found",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 35,
+      "name": "Xoa dia chi",
+      "method": "DELETE",
+      "path": "/api/addresses/:id",
+      "auth_required": true,
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Delete address successfully",
+            "data": null
+          }
+        },
+        "error": {
+          "status": "400 or 401",
+          "body": {
+            "code": 400,
+            "msg": "address not found",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 36,
+      "name": "Dat dia chi mac dinh",
+      "method": "PATCH",
+      "path": "/api/addresses/:id/default",
+      "auth_required": true,
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Set default address successfully",
+            "data": null
+          }
+        },
+        "error": {
+          "status": "400 or 401",
+          "body": {
+            "code": 400,
+            "msg": "address not found",
+            "data": null
+          }
+        }
+      }
+    }
+  ]
+}

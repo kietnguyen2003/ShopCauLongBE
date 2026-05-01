@@ -150,9 +150,19 @@ func (s *Service) UpdateOrderStatus(id uint, status domainOrder.OrderStatus) err
 		return err
 	}
 
+	wasCancelled := ord.Status == domainOrder.OrderStatusCancelled
 	err = ord.UpdateStatus(status)
 	if err != nil {
 		return err
+	}
+
+	if status == domainOrder.OrderStatusCancelled && !wasCancelled {
+		err = s.orderRepo.UpdateWithProductRestock(ord)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
 
 	err = s.orderRepo.Update(ord)

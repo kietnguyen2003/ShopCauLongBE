@@ -1,7 +1,6 @@
 package http
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -42,8 +41,6 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 		errorResponse(c, http.StatusUnauthorized, "User not authenticated")
 		return
 	}
-
-	fmt.Println("userId: ", userID)
 
 	var req addCartItemsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
