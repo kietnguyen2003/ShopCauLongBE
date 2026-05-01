@@ -18,6 +18,14 @@ type productResponse struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+type productListResponse struct {
+	Items      []productResponse `json:"items"`
+	Page       int               `json:"page"`
+	Limit      int               `json:"limit"`
+	Total      int64             `json:"total"`
+	TotalPages int               `json:"total_pages"`
+}
+
 type productRequest struct {
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
@@ -83,4 +91,14 @@ func toProductHTTPResponses(responses []appProduct.ProductResponse) []productRes
 		result[i] = toProductHTTPResponse(resp)
 	}
 	return result
+}
+
+func toProductListHTTPResponse(resp appProduct.ProductListResponse) productListResponse {
+	return productListResponse{
+		Items:      toProductHTTPResponses(resp.Items),
+		Page:       resp.Page,
+		Limit:      resp.Limit,
+		Total:      resp.Total,
+		TotalPages: resp.TotalPages,
+	}
 }

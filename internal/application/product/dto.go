@@ -18,6 +18,14 @@ type ProductResponse struct {
 	UpdatedAt   time.Time
 }
 
+type ProductListResponse struct {
+	Items      []ProductResponse
+	Page       int
+	Limit      int
+	Total      int64
+	TotalPages int
+}
+
 type ProductRequest struct {
 	Name        string
 	Description string
@@ -34,6 +42,16 @@ type ProductUpdateRequest struct {
 	Stock       *int
 	Image       *string
 	Category    *string
+}
+
+type ProductQuery struct {
+	Page     int
+	Limit    int
+	Search   string
+	Category string
+	MinPrice *float64
+	MaxPrice *float64
+	Sort     string
 }
 
 func toProductResponse(prod *domainProduct.Product) ProductResponse {

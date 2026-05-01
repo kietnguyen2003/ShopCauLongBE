@@ -419,11 +419,23 @@ GET
 URL:
 /api/products
 
+Vi du:
+/api/products?page=1&limit=12&search=yonex&category=racket&min_price=500000&max_price=3000000&sort=price_asc
+
 Header:
 Accept: application/json
 
 Request body:
 Khong co
+
+Query params:
+page: So trang, mac dinh 1.
+limit: So san pham moi trang, mac dinh 12, toi da 100.
+search: Tu khoa tim theo name hoac description.
+category: Ten danh muc, vi du clothing hoac racket.
+min_price: Gia toi thieu.
+max_price: Gia toi da.
+sort: Cach sap xep. Gia tri ho tro: price_asc, price_desc, name_asc, name_desc, newest, oldest.
 
 Response thanh cong:
 HTTP status: 200 OK
@@ -431,27 +443,34 @@ HTTP status: 200 OK
 {
   "code": 200,
   "msg": "Get products successfully",
-  "data": [
-    {
-      "id": 1,
-      "name": "Ao Cau Long Yonex Pro",
-      "description": "Mo ta san pham",
-      "price": 450000,
-      "stock": 20,
-      "image": "https://example.com/image.png",
-      "category": "clothing",
-      "created_at": "2026-04-29T10:00:00Z",
-      "updated_at": "2026-04-29T10:00:00Z"
-    }
-  ]
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "name": "Ao Cau Long Yonex Pro",
+        "description": "Mo ta san pham",
+        "price": 450000,
+        "stock": 20,
+        "image": "https://example.com/image.png",
+        "category": "clothing",
+        "status": "active",
+        "created_at": "2026-04-29T10:00:00Z",
+        "updated_at": "2026-04-29T10:00:00Z"
+      }
+    ],
+    "page": 1,
+    "limit": 12,
+    "total": 1,
+    "total_pages": 1
+  }
 }
 
 Response loi:
-HTTP status: 500 Internal Server Error
+HTTP status: 400 Bad Request hoac 500 Internal Server Error
 
 {
-  "code": 500,
-  "msg": "Error message",
+  "code": 400,
+  "msg": "page must be a positive integer",
   "data": null
 }
 

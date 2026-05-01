@@ -9,6 +9,7 @@ type ProductRepository interface {
 	Create(product *domainProduct.Product) error
 	GetByID(id uint) (*domainProduct.Product, error)
 	GetAll() ([]*domainProduct.Product, error)
+	GetWithQuery(query ProductQuery) ([]*domainProduct.Product, int64, error)
 	GetByCategory(category string) ([]*domainProduct.Product, error)
 	Search(keyword string) ([]*domainProduct.Product, error)
 	Update(product *domainProduct.Product) error

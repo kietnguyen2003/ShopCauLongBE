@@ -3,6 +3,7 @@ package product
 import (
 	"errors"
 	domainProduct "kafka-order-demo/backend/internal/domain/product"
+	"math"
 )
 
 var ErrCategoryNotFound = errors.New("category not found")
@@ -26,6 +27,36 @@ func (s *Service) GetProducts() ([]ProductResponse, error) {
 	}
 
 	return toProductResponses(products), nil
+}
+
+func (s *Service) GetProductsWithQuery(query ProductQuery) (*ProductListResponse, error) {
+	if query.Page <= 0 {
+		query.Page = 1
+	}
+	if query.Limit <= 0 {
+		query.Limit = 12
+	}
+	if query.Limit > 100 {
+		query.Limit = 100
+	}
+
+	products, total, err := s.productRepo.GetWithQuery(query)
+	if err != nil {
+		return nil, err
+	}
+
+	totalPages := 0
+	if total > 0 {
+		totalPages = int(math.Ceil(float64(total) / float64(query.Limit)))
+	}
+
+	return &ProductListResponse{
+		Items:      toProductResponses(products),
+		Page:       query.Page,
+		Limit:      query.Limit,
+		Total:      total,
+		TotalPages: totalPages,
+	}, nil
 }
 
 func (s *Service) GetProduct(id uint) (*ProductResponse, error) {

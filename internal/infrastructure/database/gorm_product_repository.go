@@ -83,6 +83,43 @@ func (r *GormProductRepository) GetAll() ([]*product.Product, error) {
 	return products, nil
 }
 
+func (r *GormProductRepository) GetWithQuery(query appProduct.ProductQuery) ([]*product.Product, int64, error) {
+	var gormProducts []GormProduct
+	var total int64
+
+	dbQuery := r.db.Model(&GormProduct{}).Where("status = ? OR status = '' OR status IS NULL", product.StatusActive)
+	if query.Search != "" {
+		keyword := "%" + strings.ToLower(query.Search) + "%"
+		dbQuery = dbQuery.Where("LOWER(name) LIKE ? OR LOWER(description) LIKE ?", keyword, keyword)
+	}
+	if query.Category != "" {
+		dbQuery = dbQuery.Where("category = ?", query.Category)
+	}
+	if query.MinPrice != nil {
+		dbQuery = dbQuery.Where("price >= ?", *query.MinPrice)
+	}
+	if query.MaxPrice != nil {
+		dbQuery = dbQuery.Where("price <= ?", *query.MaxPrice)
+	}
+
+	if err := dbQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	orderBy := productOrderBy(query.Sort)
+	offset := (query.Page - 1) * query.Limit
+	if err := dbQuery.Order(orderBy).Limit(query.Limit).Offset(offset).Find(&gormProducts).Error; err != nil {
+		return nil, 0, err
+	}
+
+	products := make([]*product.Product, len(gormProducts))
+	for i, gp := range gormProducts {
+		products[i] = r.toDomainProduct(&gp)
+	}
+
+	return products, total, nil
+}
+
 func (r *GormProductRepository) GetByCategory(category string) ([]*product.Product, error) {
 	var gormProducts []GormProduct
 	err := r.db.Where("category = ? AND (status = ? OR status = '' OR status IS NULL)", category, product.StatusActive).Find(&gormProducts).Error
@@ -164,4 +201,23 @@ func productStatus(status string) string {
 	}
 
 	return status
+}
+
+func productOrderBy(sort string) string {
+	switch sort {
+	case "price_asc":
+		return "price ASC"
+	case "price_desc":
+		return "price DESC"
+	case "name_asc":
+		return "name ASC"
+	case "name_desc":
+		return "name DESC"
+	case "oldest":
+		return "created_at ASC"
+	case "newest":
+		return "created_at DESC"
+	default:
+		return "id DESC"
+	}
 }

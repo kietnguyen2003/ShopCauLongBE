@@ -1,12 +1,19 @@
 package http
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
 	appProduct "kafka-order-demo/backend/internal/application/product"
 
 	"github.com/gin-gonic/gin"
+)
+
+const (
+	defaultProductPage  = 1
+	defaultProductLimit = 12
+	maxProductLimit     = 100
 )
 
 type ProductHandler struct {
@@ -20,13 +27,19 @@ func NewProductHandler(productService *appProduct.Service) *ProductHandler {
 }
 
 func (h *ProductHandler) GetProducts(c *gin.Context) {
-	products, err := h.productService.GetProducts()
+	query, err := parseProductQuery(c)
+	if err != nil {
+		errorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	products, err := h.productService.GetProductsWithQuery(query)
 	if err != nil {
 		errorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	successResponse(c, http.StatusOK, "Get products successfully", toProductHTTPResponses(products))
+	successResponse(c, http.StatusOK, "Get products successfully", toProductListHTTPResponse(*products))
 }
 
 func (h *ProductHandler) GetProductByID(c *gin.Context) {
@@ -145,4 +158,71 @@ func (h *ProductHandler) UpdateProductStock(c *gin.Context) {
 	}
 
 	successResponse(c, http.StatusOK, "Update product stock successfully", nil)
+}
+
+func parseProductQuery(c *gin.Context) (appProduct.ProductQuery, error) {
+	page, err := parsePositiveIntQuery(c, "page", defaultProductPage)
+	if err != nil {
+		return appProduct.ProductQuery{}, err
+	}
+
+	limit, err := parsePositiveIntQuery(c, "limit", defaultProductLimit)
+	if err != nil {
+		return appProduct.ProductQuery{}, err
+	}
+	if limit > maxProductLimit {
+		limit = maxProductLimit
+	}
+
+	minPrice, err := parseOptionalNonNegativeFloatQuery(c, "min_price")
+	if err != nil {
+		return appProduct.ProductQuery{}, err
+	}
+
+	maxPrice, err := parseOptionalNonNegativeFloatQuery(c, "max_price")
+	if err != nil {
+		return appProduct.ProductQuery{}, err
+	}
+
+	if minPrice != nil && maxPrice != nil && *minPrice > *maxPrice {
+		return appProduct.ProductQuery{}, errors.New("min_price cannot be greater than max_price")
+	}
+
+	return appProduct.ProductQuery{
+		Page:     page,
+		Limit:    limit,
+		Search:   c.Query("search"),
+		Category: c.Query("category"),
+		MinPrice: minPrice,
+		MaxPrice: maxPrice,
+		Sort:     c.Query("sort"),
+	}, nil
+}
+
+func parsePositiveIntQuery(c *gin.Context, key string, defaultValue int) (int, error) {
+	value := c.Query(key)
+	if value == "" {
+		return defaultValue, nil
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed <= 0 {
+		return 0, errors.New(key + " must be a positive integer")
+	}
+
+	return parsed, nil
+}
+
+func parseOptionalNonNegativeFloatQuery(c *gin.Context, key string) (*float64, error) {
+	value := c.Query(key)
+	if value == "" {
+		return nil, nil
+	}
+
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil || parsed < 0 {
+		return nil, errors.New(key + " must be a non-negative number")
+	}
+
+	return &parsed, nil
 }
