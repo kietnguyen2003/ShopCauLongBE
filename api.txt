@@ -1267,6 +1267,263 @@ HTTP status: 400 Bad Request, 401 Unauthorized hoac 403 Forbidden
 }
 
 
+27. Lay gio hang cua user
+-------------------------
+Method:
+GET
+
+URL:
+/api/cart
+
+Header:
+Accept: application/json
+Authorization: Bearer <token>
+
+Request body:
+Khong co
+
+Response thanh cong:
+HTTP status: 200 OK
+
+{
+  "code": 200,
+  "msg": "Get cart successfully",
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "product_id": 1,
+        "name": "Ao Cau Long Yonex Pro",
+        "description": "Mo ta san pham",
+        "price": 450000,
+        "quantity": 2,
+        "image": "https://example.com/image.png",
+        "subtotal": 900000,
+        "created_at": "2026-04-29T10:00:00Z",
+        "updated_at": "2026-04-29T10:00:00Z"
+      }
+    ],
+    "total_amount": 900000,
+    "total_items": 2
+  }
+}
+
+Response loi:
+HTTP status: 401 Unauthorized hoac 500 Internal Server Error
+
+{
+  "code": 401,
+  "msg": "User not authenticated",
+  "data": null
+}
+
+
+28. Them san pham vao gio hang
+------------------------------
+Method:
+POST
+
+URL:
+/api/cart/items
+
+Header:
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer <token>
+
+Request body:
+{
+  "items": [
+    {
+      "product_id": 1,
+      "quantity": 2
+    },
+    {
+      "product_id": 2,
+      "quantity": 1
+    }
+  ]
+}
+
+Ghi chu:
+Neu product da co trong gio hang thi backend se cong them quantity.
+Co the gui 1 hoac nhieu product trong mang items.
+Neu tong quantity lon hon stock hien tai thi API tra loi.
+
+Response thanh cong:
+HTTP status: 201 Created
+
+{
+  "code": 201,
+  "msg": "Add cart item successfully",
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "product_id": 1,
+        "name": "Ao Cau Long Yonex Pro",
+        "description": "Mo ta san pham",
+        "price": 450000,
+        "quantity": 2,
+        "image": "https://example.com/image.png",
+        "subtotal": 900000,
+        "created_at": "2026-04-29T10:00:00Z",
+        "updated_at": "2026-04-29T10:00:00Z"
+      }
+    ],
+    "total_amount": 900000,
+    "total_items": 2
+  }
+}
+
+Response loi:
+HTTP status: 400 Bad Request hoac 401 Unauthorized
+
+{
+  "code": 400,
+  "msg": "sản phẩm Ao Cau Long Yonex Pro không còn đủ hàng",
+  "data": null
+}
+
+
+29. Cap nhat so luong item trong gio hang
+----------------------------------------
+Method:
+PUT
+
+URL:
+/api/cart/items/:id
+
+Vi du:
+/api/cart/items/1
+
+Header:
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer <token>
+
+Request body:
+{
+  "quantity": 3
+}
+
+Path params:
+id: ID cua cart item, khong phai product_id.
+
+Response thanh cong:
+HTTP status: 200 OK
+
+{
+  "code": 200,
+  "msg": "Update cart item successfully",
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "product_id": 1,
+        "name": "Ao Cau Long Yonex Pro",
+        "description": "Mo ta san pham",
+        "price": 450000,
+        "quantity": 3,
+        "image": "https://example.com/image.png",
+        "subtotal": 1350000,
+        "created_at": "2026-04-29T10:00:00Z",
+        "updated_at": "2026-04-29T10:05:00Z"
+      }
+    ],
+    "total_amount": 1350000,
+    "total_items": 3
+  }
+}
+
+Response loi:
+HTTP status: 400 Bad Request hoac 401 Unauthorized
+
+{
+  "code": 400,
+  "msg": "cart item not found",
+  "data": null
+}
+
+
+30. Xoa item khoi gio hang
+--------------------------
+Method:
+DELETE
+
+URL:
+/api/cart/items/:id
+
+Vi du:
+/api/cart/items/1
+
+Header:
+Accept: application/json
+Authorization: Bearer <token>
+
+Request body:
+Khong co
+
+Path params:
+id: ID cua cart item, khong phai product_id.
+
+Response thanh cong:
+HTTP status: 200 OK
+
+{
+  "code": 200,
+  "msg": "Delete cart item successfully",
+  "data": {
+    "items": [],
+    "total_amount": 0,
+    "total_items": 0
+  }
+}
+
+Response loi:
+HTTP status: 400 Bad Request hoac 401 Unauthorized
+
+{
+  "code": 400,
+  "msg": "cart item not found",
+  "data": null
+}
+
+
+31. Xoa toan bo gio hang
+------------------------
+Method:
+DELETE
+
+URL:
+/api/cart/clear
+
+Header:
+Accept: application/json
+Authorization: Bearer <token>
+
+Request body:
+Khong co
+
+Response thanh cong:
+HTTP status: 200 OK
+
+{
+  "code": 200,
+  "msg": "Clear cart successfully",
+  "data": null
+}
+
+Response loi:
+HTTP status: 401 Unauthorized hoac 500 Internal Server Error
+
+{
+  "code": 401,
+  "msg": "User not authenticated",
+  "data": null
+}
+
+
 Loi xac thuc token
 ------------------
 Khi thieu header Authorization:

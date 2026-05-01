@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"kafka-order-demo/backend/internal/application/auth"
+	"kafka-order-demo/backend/internal/application/cart"
 	"kafka-order-demo/backend/internal/application/category"
 	"kafka-order-demo/backend/internal/application/order"
 	"kafka-order-demo/backend/internal/application/product"
@@ -36,6 +37,7 @@ func main() {
 
 	// Initialize repositories
 	userRepo := database.NewGormUserRepository(db)
+	cartRepo := database.NewGormCartRepository(db)
 	categoryRepo := database.NewGormCategoryRepository(db)
 	productRepo := database.NewGormProductRepository(db)
 	orderRepo := database.NewGormOrderRepository(db)
@@ -44,12 +46,14 @@ func main() {
 
 	// Initialize services
 	authService := auth.NewService(userRepo, passwordHasher, tokenProvider)
+	cartService := cart.NewService(cartRepo, productRepo)
 	categoryService := category.NewService(categoryRepo)
 	productService := product.NewService(productRepo, categoryRepo)
 	orderService := order.NewService(orderRepo, productRepo)
 
 	// Initialize handlers
 	authHandler := httpHandlers.NewAuthHandler(authService, tokenProvider)
+	cartHandler := httpHandlers.NewCartHandler(cartService)
 	categoryHandler := httpHandlers.NewCategoryHandler(categoryService)
 	productHandler := httpHandlers.NewProductHandler(productService)
 	orderHandler := httpHandlers.NewOrderHandler(orderService)
@@ -66,13 +70,13 @@ func main() {
 	}))
 
 	// Setup routes
-	setupRoutes(r, authHandler, orderHandler, productHandler, categoryHandler)
+	setupRoutes(r, authHandler, cartHandler, orderHandler, productHandler, categoryHandler)
 
 	log.Printf("Server starting on port %s", cfg.Port)
 	log.Fatal(r.Run(":" + cfg.Port))
 }
 
-func setupRoutes(r *gin.Engine, authHandler *httpHandlers.AuthHandler, orderHandler *httpHandlers.OrderHandler, productHandler *httpHandlers.ProductHandler, categoryHandler *httpHandlers.CategoryHandler) {
+func setupRoutes(r *gin.Engine, authHandler *httpHandlers.AuthHandler, cartHandler *httpHandlers.CartHandler, orderHandler *httpHandlers.OrderHandler, productHandler *httpHandlers.ProductHandler, categoryHandler *httpHandlers.CategoryHandler) {
 	// Auth routes
 	auth := r.Group("/auth")
 	{
@@ -101,6 +105,11 @@ func setupRoutes(r *gin.Engine, authHandler *httpHandlers.AuthHandler, orderHand
 	api.Use(authHandler.AuthMiddleware())
 	{
 		// User routes
+		api.GET("/cart", cartHandler.GetCart)
+		api.POST("/cart/items", cartHandler.AddItem)
+		api.PUT("/cart/items/:id", cartHandler.UpdateItem)
+		api.DELETE("/cart/items/:id", cartHandler.DeleteItem)
+		api.DELETE("/cart/clear", cartHandler.ClearCart)
 		api.POST("/orders", orderHandler.CreateOrder)
 		api.GET("/orders", orderHandler.GetUserOrders)
 
