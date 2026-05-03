@@ -911,7 +911,8 @@
       },
       "notes": [
         "Status hop le: pending, confirmed, cancelled",
-        "Don pending co the doi sang confirmed hoac cancelled. Don confirmed/cancelled khong the doi tiep."
+        "Don pending co the doi sang confirmed hoac cancelled. Don confirmed/cancelled khong the doi tiep.",
+        "Neu status update la cancelled thi backend restock lai cac san pham trong order."
       ],
       "responses": {
         "success": {
@@ -1273,6 +1274,175 @@
           "body": {
             "code": 400,
             "msg": "address not found",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 37,
+      "name": "Xem review cua san pham",
+      "method": "GET",
+      "path": "/api/products/:id/reviews",
+      "auth_required": false,
+      "path_params": {
+        "id": "Product ID"
+      },
+      "example_url": "/api/products/1/reviews",
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get product reviews successfully",
+            "data": [
+              {
+                "id": 1,
+                "product_id": 1,
+                "user_id": 2,
+                "rating": 5,
+                "comment": "San pham tot",
+                "created_at": "2026-05-03T10:00:00Z",
+                "updated_at": "2026-05-03T10:00:00Z"
+              },
+              {
+                "id": 2,
+                "product_id": 1,
+                "user_id": 2,
+                "rating": null,
+                "comment": "Lan review chi co comment",
+                "created_at": "2026-05-03T10:05:00Z",
+                "updated_at": "2026-05-03T10:05:00Z"
+              }
+            ]
+          }
+        },
+        "error": {
+          "status": "400 or 404",
+          "body": {
+            "code": 404,
+            "msg": "Product not found",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 38,
+      "name": "User danh gia san pham",
+      "method": "POST",
+      "path": "/api/products/:id/reviews",
+      "auth_required": true,
+      "path_params": {
+        "id": "Product ID"
+      },
+      "request_body": {
+        "rating": 5
+      },
+      "notes": [
+        "Rating hop le tu 1 den 5.",
+        "Co the gui chi rating, chi comment, hoac ca hai.",
+        "Neu khong gui rating thi response rating la null.",
+        "Moi user co the review nhieu lan cho cung mot product.",
+        "User phai tung mua san pham nay moi duoc review."
+      ],
+      "responses": {
+        "success": {
+          "status": 201,
+          "body": {
+            "code": 201,
+            "msg": "Create review successfully",
+            "data": {
+              "id": 1,
+              "product_id": 1,
+              "user_id": 2,
+              "rating": 5,
+              "comment": "",
+              "created_at": "2026-05-03T10:00:00Z",
+              "updated_at": "2026-05-03T10:00:00Z"
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401",
+          "body": {
+            "code": 400,
+            "msg": "Bạn chưa mua sản phẩm",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 39,
+      "name": "Sua review",
+      "method": "PUT",
+      "path": "/api/reviews/:id",
+      "auth_required": true,
+      "path_params": {
+        "id": "Review ID"
+      },
+      "request_body": {
+        "rating": 4
+      },
+      "notes": [
+        "Chi chu review moi duoc sua.",
+        "API nay chi cap nhat rating, comment cu duoc giu nguyen.",
+        "Rating hop le tu 1 den 5."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Update review successfully",
+            "data": {
+              "id": 1,
+              "product_id": 1,
+              "user_id": 2,
+              "rating": 4,
+              "comment": "San pham tot",
+              "created_at": "2026-05-03T10:00:00Z",
+              "updated_at": "2026-05-03T10:05:00Z"
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401",
+          "body": {
+            "code": 400,
+            "msg": "you can only modify your own review",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 40,
+      "name": "Xoa review",
+      "method": "DELETE",
+      "path": "/api/reviews/:id",
+      "auth_required": true,
+      "path_params": {
+        "id": "Review ID"
+      },
+      "notes": [
+        "Chi chu review moi duoc xoa."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Delete review successfully",
+            "data": null
+          }
+        },
+        "error": {
+          "status": "400 or 401",
+          "body": {
+            "code": 400,
+            "msg": "you can only modify your own review",
             "data": null
           }
         }

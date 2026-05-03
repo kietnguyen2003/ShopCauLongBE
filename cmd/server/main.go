@@ -9,6 +9,7 @@ import (
 	"kafka-order-demo/backend/internal/application/category"
 	"kafka-order-demo/backend/internal/application/order"
 	"kafka-order-demo/backend/internal/application/product"
+	"kafka-order-demo/backend/internal/application/review"
 	"kafka-order-demo/backend/internal/infrastructure/config"
 	"kafka-order-demo/backend/internal/infrastructure/database"
 	"kafka-order-demo/backend/internal/infrastructure/security"
@@ -43,6 +44,7 @@ func main() {
 	categoryRepo := database.NewGormCategoryRepository(db)
 	productRepo := database.NewGormProductRepository(db)
 	orderRepo := database.NewGormOrderRepository(db)
+	reviewRepo := database.NewGormReviewRepository(db)
 	passwordHasher := security.NewBcryptHasher()
 	tokenProvider := security.NewJWTProvider(cfg.JWTSecret)
 
@@ -53,6 +55,7 @@ func main() {
 	categoryService := category.NewService(categoryRepo)
 	productService := product.NewService(productRepo, categoryRepo)
 	orderService := order.NewService(orderRepo, productRepo, addressRepo, cartRepo)
+	reviewService := review.NewService(reviewRepo, productRepo, orderRepo)
 
 	// Initialize handlers
 	addressHandler := httpHandlers.NewAddressHandler(addressService)
@@ -61,6 +64,7 @@ func main() {
 	categoryHandler := httpHandlers.NewCategoryHandler(categoryService)
 	productHandler := httpHandlers.NewProductHandler(productService)
 	orderHandler := httpHandlers.NewOrderHandler(orderService)
+	reviewHandler := httpHandlers.NewReviewHandler(reviewService)
 
 	// Setup Gin router
 	r := gin.Default()
@@ -74,13 +78,13 @@ func main() {
 	}))
 
 	// Setup routes
-	setupRoutes(r, addressHandler, authHandler, cartHandler, orderHandler, productHandler, categoryHandler)
+	setupRoutes(r, addressHandler, authHandler, cartHandler, orderHandler, productHandler, categoryHandler, reviewHandler)
 
 	log.Printf("Server starting on port %s", cfg.Port)
 	log.Fatal(r.Run(":" + cfg.Port))
 }
 
-func setupRoutes(r *gin.Engine, addressHandler *httpHandlers.AddressHandler, authHandler *httpHandlers.AuthHandler, cartHandler *httpHandlers.CartHandler, orderHandler *httpHandlers.OrderHandler, productHandler *httpHandlers.ProductHandler, categoryHandler *httpHandlers.CategoryHandler) {
+func setupRoutes(r *gin.Engine, addressHandler *httpHandlers.AddressHandler, authHandler *httpHandlers.AuthHandler, cartHandler *httpHandlers.CartHandler, orderHandler *httpHandlers.OrderHandler, productHandler *httpHandlers.ProductHandler, categoryHandler *httpHandlers.CategoryHandler, reviewHandler *httpHandlers.ReviewHandler) {
 	// Auth routes
 	auth := r.Group("/auth")
 	{
@@ -100,6 +104,7 @@ func setupRoutes(r *gin.Engine, addressHandler *httpHandlers.AddressHandler, aut
 	r.GET("/api/products", productHandler.GetProducts)
 	r.GET("/api/products/search", productHandler.SearchProducts)
 	r.GET("/api/products/category/:category", productHandler.GetProductsByCategory)
+	r.GET("/api/products/:id/reviews", reviewHandler.GetProductReviews)
 	r.GET("/api/products/:id", productHandler.GetProductByID)
 	r.GET("/api/categories", categoryHandler.GetCategories)
 	r.GET("/api/categories/:id", categoryHandler.GetCategoryByID)
@@ -121,6 +126,9 @@ func setupRoutes(r *gin.Engine, addressHandler *httpHandlers.AddressHandler, aut
 		api.DELETE("/cart/clear", cartHandler.ClearCart)
 		api.POST("/orders", orderHandler.CreateOrder)
 		api.GET("/orders", orderHandler.GetUserOrders)
+		api.POST("/products/:id/reviews", reviewHandler.CreateReview)
+		api.PUT("/reviews/:id", reviewHandler.UpdateReview)
+		api.DELETE("/reviews/:id", reviewHandler.DeleteReview)
 
 		// Admin routes
 		admin := api.Group("/admin")
