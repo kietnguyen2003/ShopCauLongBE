@@ -3,9 +3,12 @@ package order
 import (
 	"errors"
 	"fmt"
+	domainCoupon "kafka-order-demo/backend/internal/domain/coupon"
 	domainOrder "kafka-order-demo/backend/internal/domain/order"
 	domainProduct "kafka-order-demo/backend/internal/domain/product"
 	"log"
+	"strings"
+	"time"
 )
 
 type Service struct {
@@ -13,14 +16,16 @@ type Service struct {
 	productRepo ProductRepository
 	addressRepo AddressRepository
 	cartRepo    CartRepository
+	couponRepo  CouponRepository
 }
 
-func NewService(orderRepo OrderRepository, productRepo ProductRepository, addressRepo AddressRepository, cartRepo CartRepository) *Service {
+func NewService(orderRepo OrderRepository, productRepo ProductRepository, addressRepo AddressRepository, cartRepo CartRepository, couponRepo CouponRepository) *Service {
 	return &Service{
 		orderRepo:   orderRepo,
 		productRepo: productRepo,
 		addressRepo: addressRepo,
 		cartRepo:    cartRepo,
+		couponRepo:  couponRepo,
 	}
 }
 
@@ -92,6 +97,44 @@ func (s *Service) CreateOrder(req CreateOrderRequest) (*OrderResponse, error) {
 		return nil, err
 	}
 
+	var redemptions []*domainCoupon.Redemption
+	couponCodes := normalizeRequestedCouponCodes(req.CouponCode, req.CouponCodes)
+	if len(couponCodes) > 0 {
+		coupons, discountAmount, err := s.validateCouponsForOrder(req.UserID, couponCodes, ord.SubtotalAmount)
+		if err != nil {
+			return nil, err
+		}
+
+		appliedCodes := make([]string, len(coupons))
+		appliedCodes = appliedCodes[:0]
+		now := time.Now()
+		remainingDiscount := discountAmount
+		for _, coupon := range coupons {
+			if remainingDiscount <= 0 {
+				break
+			}
+			couponDiscount := coupon.CalculateDiscount(ord.SubtotalAmount)
+			if couponDiscount > remainingDiscount {
+				couponDiscount = remainingDiscount
+			}
+			if couponDiscount <= 0 {
+				continue
+			}
+			remainingDiscount -= couponDiscount
+			appliedCodes = append(appliedCodes, coupon.Code)
+			redemptions = append(redemptions, &domainCoupon.Redemption{
+				CouponID:       coupon.ID,
+				UserID:         req.UserID,
+				DiscountAmount: couponDiscount,
+				CreatedAt:      now,
+			})
+		}
+
+		if len(redemptions) > 0 {
+			ord.ApplyDiscount(&redemptions[0].CouponID, appliedCodes, discountAmount)
+		}
+	}
+
 	productsToUpdate := make([]*domainProduct.Product, 0, len(productsByID))
 	for productID, prod := range productsByID {
 		if err := prod.DecreaseStock(quantitiesByProductID[productID]); err != nil {
@@ -100,20 +143,87 @@ func (s *Service) CreateOrder(req CreateOrderRequest) (*OrderResponse, error) {
 		productsToUpdate = append(productsToUpdate, prod)
 	}
 
-	// Save stock updates and order atomically
-	err = s.orderRepo.CreateWithProductStockUpdates(ord, productsToUpdate)
+	if len(redemptions) > 0 {
+		err = s.orderRepo.CreateWithProductStockUpdatesAndCoupons(ord, productsToUpdate, redemptions)
+	} else {
+		err = s.orderRepo.CreateWithProductStockUpdates(ord, productsToUpdate)
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	if req.AddressID != 0 {
-		if err := s.cartRepo.Clear(req.UserID); err != nil {
-			return nil, err
+	response := toOrderResponse(ord)
+	return &response, nil
+}
+
+func (s *Service) validateCouponsForOrder(userID uint, codes []string, subtotalAmount float64) ([]*domainCoupon.Coupon, float64, error) {
+	coupons := make([]*domainCoupon.Coupon, 0, len(codes))
+	seenCodes := make(map[string]struct{})
+	var totalDiscount float64
+
+	for _, code := range codes {
+		normalizedCode := domainCoupon.NormalizeCode(code)
+		if normalizedCode == "" {
+			continue
+		}
+		if _, exists := seenCodes[normalizedCode]; exists {
+			return nil, 0, errors.New("duplicate coupon code")
+		}
+		seenCodes[normalizedCode] = struct{}{}
+
+		coupon, discountAmount, err := s.validateCouponForOrder(userID, normalizedCode, subtotalAmount)
+		if err != nil {
+			return nil, 0, err
+		}
+		coupons = append(coupons, coupon)
+		totalDiscount += discountAmount
+	}
+
+	if len(coupons) == 0 {
+		return nil, 0, domainCoupon.ErrCouponCodeRequired
+	}
+	if totalDiscount > subtotalAmount {
+		totalDiscount = subtotalAmount
+	}
+
+	return coupons, totalDiscount, nil
+}
+
+func (s *Service) validateCouponForOrder(userID uint, code string, subtotalAmount float64) (*domainCoupon.Coupon, float64, error) {
+	normalizedCode := domainCoupon.NormalizeCode(code)
+	if normalizedCode == "" {
+		return nil, 0, domainCoupon.ErrCouponCodeRequired
+	}
+
+	coupon, err := s.couponRepo.GetByCode(normalizedCode)
+	if err != nil {
+		return nil, 0, errors.New("coupon not found")
+	}
+
+	userUsedCount, err := s.couponRepo.CountRedemptionsByCouponIDAndUserID(coupon.ID, userID)
+	if err != nil {
+		return nil, 0, err
+	}
+	if err := coupon.ValidateForUse(subtotalAmount, userUsedCount, time.Now()); err != nil {
+		return nil, 0, err
+	}
+
+	return coupon, coupon.CalculateDiscount(subtotalAmount), nil
+}
+
+func normalizeRequestedCouponCodes(legacyCode string, codes []string) []string {
+	result := make([]string, 0, len(codes)+1)
+	if legacyCode != "" {
+		result = append(result, legacyCode)
+	}
+	for _, code := range codes {
+		trimmed := strings.TrimSpace(code)
+		if trimmed != "" {
+			result = append(result, trimmed)
 		}
 	}
 
-	response := toOrderResponse(ord)
-	return &response, nil
+	return result
 }
 
 func (s *Service) GetOrdersByUser(userID uint) ([]OrderResponse, error) {

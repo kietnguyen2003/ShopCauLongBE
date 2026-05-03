@@ -810,11 +810,19 @@
       "path": "/api/orders",
       "auth_required": true,
       "request_body": {
-        "address_id": 1
+        "address_id": 1,
+        "coupon_codes": [
+          "SALE10",
+          "FIX10K"
+        ]
       },
       "notes": [
         "Backend lay thong tin nguoi nhan tu address_id cua user hien tai.",
         "Backend lay san pham tu gio hang hien tai.",
+        "coupon_code la optional va van duoc ho tro cho client cu.",
+        "coupon_codes la optional, dung khi muon ap dung nhieu coupon cho mot order.",
+        "Neu co coupon_code/coupon_codes thi backend validate lai coupon khi tao order.",
+        "Backend tu tinh subtotal_amount, discount_amount va total_amount, khong lay tien tu frontend.",
         "Tao order thanh cong thi backend clear gio hang."
       ],
       "responses": {
@@ -827,7 +835,14 @@
               "id": 1,
               "user_id": 1,
               "order_items": [],
-              "total_amount": 900000,
+              "subtotal_amount": 900000,
+              "discount_amount": 90000,
+              "total_amount": 810000,
+              "coupon_code": "SALE10",
+              "coupon_codes": [
+                "SALE10",
+                "FIX10K"
+              ],
               "status": "pending",
               "customer_name": "Nguyen Van A",
               "phone": "0909123456",
@@ -1443,6 +1458,390 @@
           "body": {
             "code": 400,
             "msg": "you can only modify your own review",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 41,
+      "name": "Admin lay danh sach coupon",
+      "method": "GET",
+      "path": "/api/admin/coupons",
+      "auth_required": true,
+      "admin_required": true,
+      "query_params": {
+        "page": {
+          "type": "integer",
+          "default": 1
+        },
+        "limit": {
+          "type": "integer",
+          "default": 20
+        },
+        "search": {
+          "type": "string",
+          "description": "Tim theo code hoac name"
+        },
+        "is_active": {
+          "type": "boolean"
+        },
+        "discount_type": {
+          "type": "string",
+          "enum": [
+            "percentage",
+            "fixed_amount"
+          ]
+        }
+      },
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get coupons successfully",
+            "data": {
+              "items": [],
+              "page": 1,
+              "limit": 20,
+              "total": 0,
+              "total_pages": 0
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 403 or 500",
+          "body": {
+            "code": 403,
+            "msg": "Admin access required",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 42,
+      "name": "Admin tao coupon",
+      "method": "POST",
+      "path": "/api/admin/coupons",
+      "auth_required": true,
+      "admin_required": true,
+      "request_body": {
+        "code": "SALE10",
+        "name": "Giam 10%",
+        "description": "Giam 10% cho don tu 500k",
+        "discount_type": "percentage",
+        "discount_value": 10,
+        "min_order_amount": 500000,
+        "max_discount_amount": 100000,
+        "usage_limit": 100,
+        "usage_limit_per_user": 1,
+        "start_at": "2026-05-01T00:00:00Z",
+        "end_at": "2026-05-31T23:59:59Z",
+        "is_active": true
+      },
+      "notes": [
+        "code duoc trim va uppercase truoc khi luu.",
+        "discount_type hop le: percentage, fixed_amount.",
+        "Neu khong gui is_active thi backend mac dinh true."
+      ],
+      "responses": {
+        "success": {
+          "status": 201,
+          "body": {
+            "code": 201,
+            "msg": "Create coupon successfully",
+            "data": {
+              "id": 1,
+              "code": "SALE10",
+              "discount_type": "percentage",
+              "discount_value": 10
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 403",
+          "body": {
+            "code": 400,
+            "msg": "coupon code is required",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 43,
+      "name": "Admin lay chi tiet coupon",
+      "method": "GET",
+      "path": "/api/admin/coupons/:id",
+      "auth_required": true,
+      "admin_required": true,
+      "path_params": {
+        "id": "Coupon ID"
+      },
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get coupon successfully",
+            "data": {
+              "id": 1,
+              "code": "SALE10"
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 403 or 404",
+          "body": {
+            "code": 404,
+            "msg": "coupon not found",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 44,
+      "name": "Admin cap nhat coupon",
+      "method": "PUT",
+      "path": "/api/admin/coupons/:id",
+      "auth_required": true,
+      "admin_required": true,
+      "path_params": {
+        "id": "Coupon ID"
+      },
+      "request_body": {
+        "name": "Ten moi",
+        "min_order_amount": 700000,
+        "is_active": false
+      },
+      "notes": [
+        "Co the update rieng le tung field."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Update coupon successfully",
+            "data": {
+              "id": 1,
+              "code": "SALE10"
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 403",
+          "body": {
+            "code": 400,
+            "msg": "Invalid coupon ID",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 45,
+      "name": "Admin xoa coupon",
+      "method": "DELETE",
+      "path": "/api/admin/coupons/:id",
+      "auth_required": true,
+      "admin_required": true,
+      "path_params": {
+        "id": "Coupon ID"
+      },
+      "notes": [
+        "Backend set is_active=false."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Delete coupon successfully",
+            "data": null
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 403",
+          "body": {
+            "code": 400,
+            "msg": "Invalid coupon ID",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 46,
+      "name": "Admin bat/tat coupon",
+      "method": "PATCH",
+      "path": "/api/admin/coupons/:id/status",
+      "auth_required": true,
+      "admin_required": true,
+      "path_params": {
+        "id": "Coupon ID"
+      },
+      "request_body": {
+        "is_active": false
+      },
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Update coupon status successfully",
+            "data": null
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 403",
+          "body": {
+            "code": 400,
+            "msg": "Invalid coupon ID",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 47,
+      "name": "Validate coupon",
+      "method": "POST",
+      "path": "/api/coupons/validate",
+      "auth_required": true,
+      "request_body": {
+        "coupon_codes": [
+          "SALE10",
+          "FIX10K"
+        ]
+      },
+      "notes": [
+        "Backend lay cart hien tai cua user de tinh subtotal.",
+        "code van duoc ho tro cho validate mot coupon.",
+        "coupon_codes dung de validate nhieu coupon truoc khi dat hang.",
+        "Ket qua validate chi dung de hien thi checkout, POST /api/orders se validate lai."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Coupon is valid",
+            "data": {
+              "coupon_code": "SALE10",
+              "coupon_codes": [
+                "SALE10",
+                "FIX10K"
+              ],
+              "discount_type": "percentage",
+              "discount_value": 10,
+              "subtotal_amount": 900000,
+              "discount_amount": 90000,
+              "total_amount": 810000
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401",
+          "body": {
+            "code": 400,
+            "msg": "coupon expired",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 48,
+      "name": "Customer lay danh sach coupon dang active",
+      "method": "GET",
+      "path": "/api/coupons",
+      "auth_required": true,
+      "query_params": {
+        "page": {
+          "type": "integer",
+          "default": 1
+        },
+        "limit": {
+          "type": "integer",
+          "default": 20
+        },
+        "search": {
+          "type": "string",
+          "description": "Tim theo code hoac name"
+        },
+        "discount_type": {
+          "type": "string",
+          "enum": [
+            "percentage",
+            "fixed_amount"
+          ]
+        }
+      },
+      "notes": [
+        "Chi user da dang nhap moi xem duoc coupon.",
+        "Chi tra ve coupon co is_active=true.",
+        "Khong tra ve coupon ma user nay da tung su dung."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get coupons successfully",
+            "data": {
+              "items": [],
+              "page": 1,
+              "limit": 20,
+              "total": 0,
+              "total_pages": 0
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 500",
+          "body": {
+            "code": 401,
+            "msg": "Authorization header required",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 49,
+      "name": "Customer lay chi tiet coupon dang active",
+      "method": "GET",
+      "path": "/api/coupons/:id",
+      "auth_required": true,
+      "path_params": {
+        "id": "Coupon ID"
+      },
+      "notes": [
+        "Chi user da dang nhap moi xem duoc coupon.",
+        "Chi tra ve coupon co is_active=true.",
+        "Neu user nay da tung su dung coupon thi tra coupon not found."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get coupon successfully",
+            "data": {
+              "id": 1,
+              "code": "SALE10",
+              "is_active": true
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 404",
+          "body": {
+            "code": 401,
+            "msg": "Authorization header required",
             "data": null
           }
         }

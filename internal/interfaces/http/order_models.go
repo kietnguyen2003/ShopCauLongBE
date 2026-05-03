@@ -7,7 +7,9 @@ import (
 )
 
 type createOrderRequest struct {
-	AddressID uint `json:"address_id"`
+	AddressID   uint     `json:"address_id"`
+	CouponCode  string   `json:"coupon_code"`
+	CouponCodes []string `json:"coupon_codes"`
 }
 
 type updateOrderStatusRequest struct {
@@ -27,23 +29,29 @@ type orderItemResponse struct {
 }
 
 type orderResponse struct {
-	ID           uint                `json:"id"`
-	UserID       uint                `json:"user_id"`
-	OrderItems   []orderItemResponse `json:"order_items"`
-	TotalAmount  float64             `json:"total_amount"`
-	Status       string              `json:"status"`
-	CustomerName string              `json:"customer_name"`
-	Phone        string              `json:"phone"`
-	Address      string              `json:"address"`
-	Email        string              `json:"email"`
-	CreatedAt    time.Time           `json:"created_at"`
-	UpdatedAt    time.Time           `json:"updated_at"`
+	ID             uint                `json:"id"`
+	UserID         uint                `json:"user_id"`
+	OrderItems     []orderItemResponse `json:"order_items"`
+	SubtotalAmount float64             `json:"subtotal_amount"`
+	DiscountAmount float64             `json:"discount_amount"`
+	TotalAmount    float64             `json:"total_amount"`
+	CouponCode     string              `json:"coupon_code"`
+	CouponCodes    []string            `json:"coupon_codes"`
+	Status         string              `json:"status"`
+	CustomerName   string              `json:"customer_name"`
+	Phone          string              `json:"phone"`
+	Address        string              `json:"address"`
+	Email          string              `json:"email"`
+	CreatedAt      time.Time           `json:"created_at"`
+	UpdatedAt      time.Time           `json:"updated_at"`
 }
 
 func toCreateOrderInput(req createOrderRequest, userID uint) appOrder.CreateOrderRequest {
 	return appOrder.CreateOrderRequest{
-		UserID:    userID,
-		AddressID: req.AddressID,
+		UserID:      userID,
+		AddressID:   req.AddressID,
+		CouponCode:  req.CouponCode,
+		CouponCodes: req.CouponCodes,
 	}
 }
 
@@ -64,17 +72,21 @@ func toOrderHTTPResponse(resp appOrder.OrderResponse) orderResponse {
 	}
 
 	return orderResponse{
-		ID:           resp.ID,
-		UserID:       resp.UserID,
-		OrderItems:   items,
-		TotalAmount:  resp.TotalAmount,
-		Status:       resp.Status,
-		CustomerName: resp.CustomerName,
-		Phone:        resp.Phone,
-		Address:      resp.Address,
-		Email:        resp.Email,
-		CreatedAt:    resp.CreatedAt,
-		UpdatedAt:    resp.UpdatedAt,
+		ID:             resp.ID,
+		UserID:         resp.UserID,
+		OrderItems:     items,
+		SubtotalAmount: resp.SubtotalAmount,
+		DiscountAmount: resp.DiscountAmount,
+		TotalAmount:    resp.TotalAmount,
+		CouponCode:     resp.CouponCode,
+		CouponCodes:    resp.CouponCodes,
+		Status:         resp.Status,
+		CustomerName:   resp.CustomerName,
+		Phone:          resp.Phone,
+		Address:        resp.Address,
+		Email:          resp.Email,
+		CreatedAt:      resp.CreatedAt,
+		UpdatedAt:      resp.UpdatedAt,
 	}
 }
 

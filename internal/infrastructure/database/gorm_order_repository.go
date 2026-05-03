@@ -1,26 +1,36 @@
 package database
 
 import (
+	"errors"
+	"strings"
+
 	appOrder "kafka-order-demo/backend/internal/application/order"
+	"kafka-order-demo/backend/internal/domain/coupon"
 	"kafka-order-demo/backend/internal/domain/order"
 	"kafka-order-demo/backend/internal/domain/product"
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type GormOrder struct {
-	ID           uint    `gorm:"primaryKey"`
-	UserID       uint    `gorm:"not null"`
-	TotalAmount  float64 `gorm:"not null"`
-	Status       string  `gorm:"default:pending"`
-	CustomerName string
-	Phone        string
-	Address      string
-	Email        string
-	CreatedAt    int64
-	UpdatedAt    int64
-	OrderItems   []GormOrderItem `gorm:"foreignKey:OrderID"`
+	ID             uint    `gorm:"primaryKey"`
+	UserID         uint    `gorm:"not null"`
+	SubtotalAmount float64 `gorm:"default:0"`
+	DiscountAmount float64 `gorm:"default:0"`
+	TotalAmount    float64 `gorm:"not null"`
+	CouponID       *uint
+	CouponCode     string
+	CouponCodes    string
+	Status         string `gorm:"default:pending"`
+	CustomerName   string
+	Phone          string
+	Address        string
+	Email          string
+	CreatedAt      int64
+	UpdatedAt      int64
+	OrderItems     []GormOrderItem `gorm:"foreignKey:OrderID"`
 }
 
 func (GormOrder) TableName() string {
@@ -72,23 +82,8 @@ func (r *GormOrderRepository) Create(ord *order.Order) error {
 
 func (r *GormOrderRepository) CreateWithProductStockUpdates(ord *order.Order, products []*product.Product) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		for _, prod := range products {
-			gormProduct := &GormProduct{
-				ID:          prod.ID,
-				Name:        prod.Name,
-				Description: prod.Description,
-				Price:       prod.Price,
-				Stock:       prod.Stock,
-				Image:       prod.Image,
-				Category:    prod.Category,
-				Status:      productStatus(prod.Status),
-				CreatedAt:   prod.CreatedAt.Unix(),
-				UpdatedAt:   prod.UpdatedAt.Unix(),
-			}
-
-			if err := tx.Save(gormProduct).Error; err != nil {
-				return err
-			}
+		if err := saveProducts(tx, products); err != nil {
+			return err
 		}
 
 		gormOrder := r.toGormOrder(ord)
@@ -101,7 +96,64 @@ func (r *GormOrderRepository) CreateWithProductStockUpdates(ord *order.Order, pr
 			ord.OrderItems[i].ID = item.ID
 		}
 
-		return nil
+		return clearCartItems(tx, ord.UserID)
+	})
+}
+
+func (r *GormOrderRepository) CreateWithProductStockUpdatesAndCoupons(ord *order.Order, products []*product.Product, redemptions []*coupon.Redemption) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := saveProducts(tx, products); err != nil {
+			return err
+		}
+
+		gormOrder := r.toGormOrder(ord)
+		if err := tx.Create(gormOrder).Error; err != nil {
+			return err
+		}
+
+		ord.ID = gormOrder.ID
+		for i, item := range gormOrder.OrderItems {
+			ord.OrderItems[i].ID = item.ID
+		}
+
+		for _, redemption := range redemptions {
+			gormCoupon, err := lockCouponForRedemption(tx, redemption.CouponID)
+			if err != nil {
+				return err
+			}
+			userUsedCount, err := countCouponRedemptionsByUser(tx, redemption.CouponID, redemption.UserID)
+			if err != nil {
+				return err
+			}
+			if userUsedCount >= gormCoupon.UsageLimitPerUser {
+				return coupon.ErrCouponAlreadyUsed
+			}
+
+			redemption.OrderID = ord.ID
+			gormRedemption := &GormCouponRedemption{
+				CouponID:       redemption.CouponID,
+				UserID:         redemption.UserID,
+				OrderID:        redemption.OrderID,
+				DiscountAmount: redemption.DiscountAmount,
+				CreatedAt:      redemption.CreatedAt.Unix(),
+			}
+			if err := tx.Create(gormRedemption).Error; err != nil {
+				return err
+			}
+			redemption.ID = gormRedemption.ID
+
+			result := tx.Model(&GormCoupon{}).
+				Where("id = ? AND (usage_limit IS NULL OR used_count < usage_limit)", redemption.CouponID).
+				Update("used_count", gorm.Expr("used_count + 1"))
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected == 0 {
+				return coupon.ErrCouponUsageLimitReached
+			}
+		}
+
+		return clearCartItems(tx, ord.UserID)
 	})
 }
 
@@ -174,6 +226,61 @@ func (r *GormOrderRepository) DeleteAll() error {
 	return r.db.Exec("DELETE FROM order_items; DELETE FROM orders;").Error
 }
 
+func lockCouponForRedemption(tx *gorm.DB, couponID uint) (*GormCoupon, error) {
+	var gormCoupon GormCoupon
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&gormCoupon, couponID).Error; err != nil {
+		return nil, err
+	}
+
+	return &gormCoupon, nil
+}
+
+func countCouponRedemptionsByUser(tx *gorm.DB, couponID, userID uint) (int, error) {
+	var count int64
+	if err := tx.Model(&GormCouponRedemption{}).
+		Where("coupon_id = ? AND user_id = ?", couponID, userID).
+		Count(&count).Error; err != nil {
+		return 0, err
+	}
+
+	return int(count), nil
+}
+
+func saveProducts(tx *gorm.DB, products []*product.Product) error {
+	for _, prod := range products {
+		gormProduct := &GormProduct{
+			ID:          prod.ID,
+			Name:        prod.Name,
+			Description: prod.Description,
+			Price:       prod.Price,
+			Stock:       prod.Stock,
+			Image:       prod.Image,
+			Category:    prod.Category,
+			Status:      productStatus(prod.Status),
+			CreatedAt:   prod.CreatedAt.Unix(),
+			UpdatedAt:   prod.UpdatedAt.Unix(),
+		}
+
+		if err := tx.Save(gormProduct).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func clearCartItems(tx *gorm.DB, userID uint) error {
+	var gormCart GormCart
+	if err := tx.Where("user_id = ? AND status = ?", userID, cartStatusActive).First(&gormCart).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return err
+	}
+
+	return tx.Where("cart_id = ?", gormCart.ID).Delete(&GormCartItem{}).Error
+}
+
 func restockOrderItems(tx *gorm.DB, orderItems []GormOrderItem) error {
 	quantitiesByProductID := make(map[uint]int)
 	for _, item := range orderItems {
@@ -216,17 +323,22 @@ func (r *GormOrderRepository) toGormOrder(ord *order.Order) *GormOrder {
 	}
 
 	return &GormOrder{
-		ID:           ord.ID,
-		UserID:       ord.UserID,
-		TotalAmount:  ord.TotalAmount,
-		Status:       string(ord.Status),
-		CustomerName: ord.CustomerName,
-		Phone:        ord.Phone,
-		Address:      ord.Address,
-		Email:        ord.Email,
-		CreatedAt:    ord.CreatedAt.Unix(),
-		UpdatedAt:    ord.UpdatedAt.Unix(),
-		OrderItems:   gormItems,
+		ID:             ord.ID,
+		UserID:         ord.UserID,
+		SubtotalAmount: ord.SubtotalAmount,
+		DiscountAmount: ord.DiscountAmount,
+		TotalAmount:    ord.TotalAmount,
+		CouponID:       ord.CouponID,
+		CouponCode:     ord.CouponCode,
+		CouponCodes:    strings.Join(ord.CouponCodes, ","),
+		Status:         string(ord.Status),
+		CustomerName:   ord.CustomerName,
+		Phone:          ord.Phone,
+		Address:        ord.Address,
+		Email:          ord.Email,
+		CreatedAt:      ord.CreatedAt.Unix(),
+		UpdatedAt:      ord.UpdatedAt.Unix(),
+		OrderItems:     gormItems,
 	}
 }
 
@@ -250,16 +362,42 @@ func (r *GormOrderRepository) toDomainOrder(gormOrder *GormOrder) *order.Order {
 	}
 
 	return &order.Order{
-		ID:           gormOrder.ID,
-		UserID:       gormOrder.UserID,
-		OrderItems:   items,
-		TotalAmount:  gormOrder.TotalAmount,
-		Status:       order.OrderStatus(gormOrder.Status),
-		CustomerName: gormOrder.CustomerName,
-		Phone:        gormOrder.Phone,
-		Address:      gormOrder.Address,
-		Email:        gormOrder.Email,
-		CreatedAt:    timeFromUnix(gormOrder.CreatedAt),
-		UpdatedAt:    timeFromUnix(gormOrder.UpdatedAt),
+		ID:             gormOrder.ID,
+		UserID:         gormOrder.UserID,
+		OrderItems:     items,
+		SubtotalAmount: gormOrder.SubtotalAmount,
+		DiscountAmount: gormOrder.DiscountAmount,
+		TotalAmount:    gormOrder.TotalAmount,
+		CouponID:       gormOrder.CouponID,
+		CouponCode:     gormOrder.CouponCode,
+		CouponCodes:    splitCouponCodes(gormOrder.CouponCodes, gormOrder.CouponCode),
+		Status:         order.OrderStatus(gormOrder.Status),
+		CustomerName:   gormOrder.CustomerName,
+		Phone:          gormOrder.Phone,
+		Address:        gormOrder.Address,
+		Email:          gormOrder.Email,
+		CreatedAt:      timeFromUnix(gormOrder.CreatedAt),
+		UpdatedAt:      timeFromUnix(gormOrder.UpdatedAt),
 	}
+}
+
+func splitCouponCodes(couponCodes, legacyCouponCode string) []string {
+	source := couponCodes
+	if source == "" {
+		source = legacyCouponCode
+	}
+	if source == "" {
+		return nil
+	}
+
+	parts := strings.Split(source, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+
+	return result
 }

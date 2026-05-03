@@ -3,6 +3,7 @@ package order
 import (
 	domainAddress "kafka-order-demo/backend/internal/domain/address"
 	domainCart "kafka-order-demo/backend/internal/domain/cart"
+	domainCoupon "kafka-order-demo/backend/internal/domain/coupon"
 	domainOrder "kafka-order-demo/backend/internal/domain/order"
 	domainProduct "kafka-order-demo/backend/internal/domain/product"
 )
@@ -10,6 +11,7 @@ import (
 type OrderRepository interface {
 	Create(order *domainOrder.Order) error
 	CreateWithProductStockUpdates(order *domainOrder.Order, products []*domainProduct.Product) error
+	CreateWithProductStockUpdatesAndCoupons(order *domainOrder.Order, products []*domainProduct.Product, redemptions []*domainCoupon.Redemption) error
 	GetByID(id uint) (*domainOrder.Order, error)
 	GetByUserID(userID uint) ([]*domainOrder.Order, error)
 	GetAll() ([]*domainOrder.Order, error)
@@ -30,4 +32,9 @@ type AddressRepository interface {
 type CartRepository interface {
 	GetByUserID(userID uint) ([]*domainCart.CartItem, error)
 	Clear(userID uint) error
+}
+
+type CouponRepository interface {
+	GetByCode(code string) (*domainCoupon.Coupon, error)
+	CountRedemptionsByCouponIDAndUserID(couponID, userID uint) (int, error)
 }

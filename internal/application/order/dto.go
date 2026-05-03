@@ -8,6 +8,8 @@ import (
 type CreateOrderRequest struct {
 	UserID       uint
 	AddressID    uint
+	CouponCode   string
+	CouponCodes  []string
 	CustomerName string
 	Phone        string
 	Address      string
@@ -33,17 +35,21 @@ type OrderItemResponse struct {
 }
 
 type OrderResponse struct {
-	ID           uint
-	UserID       uint
-	OrderItems   []OrderItemResponse
-	TotalAmount  float64
-	Status       string
-	CustomerName string
-	Phone        string
-	Address      string
-	Email        string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID             uint
+	UserID         uint
+	OrderItems     []OrderItemResponse
+	SubtotalAmount float64
+	DiscountAmount float64
+	TotalAmount    float64
+	CouponCode     string
+	CouponCodes    []string
+	Status         string
+	CustomerName   string
+	Phone          string
+	Address        string
+	Email          string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 func toOrderResponse(ord *domainOrder.Order) OrderResponse {
@@ -63,17 +69,21 @@ func toOrderResponse(ord *domainOrder.Order) OrderResponse {
 	}
 
 	return OrderResponse{
-		ID:           ord.ID,
-		UserID:       ord.UserID,
-		OrderItems:   items,
-		TotalAmount:  ord.TotalAmount,
-		Status:       string(ord.Status),
-		CustomerName: ord.CustomerName,
-		Phone:        ord.Phone,
-		Address:      ord.Address,
-		Email:        ord.Email,
-		CreatedAt:    ord.CreatedAt,
-		UpdatedAt:    ord.UpdatedAt,
+		ID:             ord.ID,
+		UserID:         ord.UserID,
+		OrderItems:     items,
+		SubtotalAmount: ord.SubtotalAmount,
+		DiscountAmount: ord.DiscountAmount,
+		TotalAmount:    ord.TotalAmount,
+		CouponCode:     ord.CouponCode,
+		CouponCodes:    ord.CouponCodes,
+		Status:         string(ord.Status),
+		CustomerName:   ord.CustomerName,
+		Phone:          ord.Phone,
+		Address:        ord.Address,
+		Email:          ord.Email,
+		CreatedAt:      ord.CreatedAt,
+		UpdatedAt:      ord.UpdatedAt,
 	}
 }
 

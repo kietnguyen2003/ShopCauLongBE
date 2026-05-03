@@ -2,6 +2,7 @@ package order
 
 import (
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -45,17 +46,22 @@ type OrderItem struct {
 
 // Order represents the order domain entity
 type Order struct {
-	ID           uint
-	UserID       uint
-	OrderItems   []OrderItem
-	TotalAmount  float64
-	Status       OrderStatus
-	CustomerName string
-	Phone        string
-	Address      string
-	Email        string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID             uint
+	UserID         uint
+	OrderItems     []OrderItem
+	SubtotalAmount float64
+	DiscountAmount float64
+	TotalAmount    float64
+	CouponID       *uint
+	CouponCode     string
+	CouponCodes    []string
+	Status         OrderStatus
+	CustomerName   string
+	Phone          string
+	Address        string
+	Email          string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // NewOrder creates a new order with validation
@@ -77,16 +83,18 @@ func NewOrder(userID uint, customerName, phone, address, email string) (*Order, 
 	}
 
 	return &Order{
-		UserID:       userID,
-		CustomerName: customerName,
-		Phone:        phone,
-		Address:      address,
-		Email:        email,
-		Status:       OrderStatusPending,
-		TotalAmount:  0,
-		OrderItems:   make([]OrderItem, 0),
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		UserID:         userID,
+		CustomerName:   customerName,
+		Phone:          phone,
+		Address:        address,
+		Email:          email,
+		Status:         OrderStatusPending,
+		SubtotalAmount: 0,
+		DiscountAmount: 0,
+		TotalAmount:    0,
+		OrderItems:     make([]OrderItem, 0),
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
 	}, nil
 }
 
@@ -166,7 +174,36 @@ func (o *Order) calculateTotal() {
 	for _, item := range o.OrderItems {
 		total += item.ProductSnapshot.Price * float64(item.Quantity)
 	}
-	o.TotalAmount = total
+	o.SubtotalAmount = total
+	o.TotalAmount = o.SubtotalAmount - o.DiscountAmount
+}
+
+func (o *Order) ApplyDiscount(couponID *uint, couponCodes []string, discountAmount float64) {
+	if discountAmount < 0 {
+		discountAmount = 0
+	}
+	if discountAmount > o.SubtotalAmount {
+		discountAmount = o.SubtotalAmount
+	}
+
+	o.CouponID = couponID
+	o.CouponCodes = normalizeCouponCodes(couponCodes)
+	o.CouponCode = strings.Join(o.CouponCodes, ",")
+	o.DiscountAmount = discountAmount
+	o.TotalAmount = o.SubtotalAmount - o.DiscountAmount
+	o.UpdatedAt = time.Now()
+}
+
+func normalizeCouponCodes(codes []string) []string {
+	result := make([]string, 0, len(codes))
+	for _, code := range codes {
+		trimmed := strings.TrimSpace(code)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+
+	return result
 }
 
 // CanBeModified checks if order can be modified

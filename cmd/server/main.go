@@ -7,6 +7,7 @@ import (
 	"kafka-order-demo/backend/internal/application/auth"
 	"kafka-order-demo/backend/internal/application/cart"
 	"kafka-order-demo/backend/internal/application/category"
+	"kafka-order-demo/backend/internal/application/coupon"
 	"kafka-order-demo/backend/internal/application/order"
 	"kafka-order-demo/backend/internal/application/product"
 	"kafka-order-demo/backend/internal/application/review"
@@ -45,6 +46,7 @@ func main() {
 	productRepo := database.NewGormProductRepository(db)
 	orderRepo := database.NewGormOrderRepository(db)
 	reviewRepo := database.NewGormReviewRepository(db)
+	couponRepo := database.NewGormCouponRepository(db)
 	passwordHasher := security.NewBcryptHasher()
 	tokenProvider := security.NewJWTProvider(cfg.JWTSecret)
 
@@ -54,7 +56,8 @@ func main() {
 	cartService := cart.NewService(cartRepo, productRepo)
 	categoryService := category.NewService(categoryRepo)
 	productService := product.NewService(productRepo, categoryRepo)
-	orderService := order.NewService(orderRepo, productRepo, addressRepo, cartRepo)
+	couponService := coupon.NewService(couponRepo, cartRepo, productRepo)
+	orderService := order.NewService(orderRepo, productRepo, addressRepo, cartRepo, couponRepo)
 	reviewService := review.NewService(reviewRepo, productRepo, orderRepo)
 
 	// Initialize handlers
@@ -65,6 +68,7 @@ func main() {
 	productHandler := httpHandlers.NewProductHandler(productService)
 	orderHandler := httpHandlers.NewOrderHandler(orderService)
 	reviewHandler := httpHandlers.NewReviewHandler(reviewService)
+	couponHandler := httpHandlers.NewCouponHandler(couponService)
 
 	// Setup Gin router
 	r := gin.Default()
@@ -78,13 +82,13 @@ func main() {
 	}))
 
 	// Setup routes
-	setupRoutes(r, addressHandler, authHandler, cartHandler, orderHandler, productHandler, categoryHandler, reviewHandler)
+	setupRoutes(r, addressHandler, authHandler, cartHandler, orderHandler, productHandler, categoryHandler, reviewHandler, couponHandler)
 
 	log.Printf("Server starting on port %s", cfg.Port)
 	log.Fatal(r.Run(":" + cfg.Port))
 }
 
-func setupRoutes(r *gin.Engine, addressHandler *httpHandlers.AddressHandler, authHandler *httpHandlers.AuthHandler, cartHandler *httpHandlers.CartHandler, orderHandler *httpHandlers.OrderHandler, productHandler *httpHandlers.ProductHandler, categoryHandler *httpHandlers.CategoryHandler, reviewHandler *httpHandlers.ReviewHandler) {
+func setupRoutes(r *gin.Engine, addressHandler *httpHandlers.AddressHandler, authHandler *httpHandlers.AuthHandler, cartHandler *httpHandlers.CartHandler, orderHandler *httpHandlers.OrderHandler, productHandler *httpHandlers.ProductHandler, categoryHandler *httpHandlers.CategoryHandler, reviewHandler *httpHandlers.ReviewHandler, couponHandler *httpHandlers.CouponHandler) {
 	// Auth routes
 	auth := r.Group("/auth")
 	{
@@ -129,6 +133,9 @@ func setupRoutes(r *gin.Engine, addressHandler *httpHandlers.AddressHandler, aut
 		api.POST("/products/:id/reviews", reviewHandler.CreateReview)
 		api.PUT("/reviews/:id", reviewHandler.UpdateReview)
 		api.DELETE("/reviews/:id", reviewHandler.DeleteReview)
+		api.GET("/coupons", couponHandler.GetActiveCoupons)
+		api.GET("/coupons/:id", couponHandler.GetActiveCoupon)
+		api.POST("/coupons/validate", couponHandler.ValidateCoupon)
 
 		// Admin routes
 		admin := api.Group("/admin")
@@ -143,6 +150,12 @@ func setupRoutes(r *gin.Engine, addressHandler *httpHandlers.AddressHandler, aut
 			admin.POST("/categories", categoryHandler.CreateCategory)
 			admin.PUT("/categories/:id", categoryHandler.UpdateCategory)
 			admin.DELETE("/categories/:id", categoryHandler.DeleteCategory)
+			admin.GET("/coupons", couponHandler.GetCoupons)
+			admin.POST("/coupons", couponHandler.CreateCoupon)
+			admin.GET("/coupons/:id", couponHandler.GetCoupon)
+			admin.PUT("/coupons/:id", couponHandler.UpdateCoupon)
+			admin.DELETE("/coupons/:id", couponHandler.DeleteCoupon)
+			admin.PATCH("/coupons/:id/status", couponHandler.UpdateCouponStatus)
 		}
 	}
 }
