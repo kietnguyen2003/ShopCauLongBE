@@ -2064,6 +2064,59 @@
           }
         }
       }
+    },
+    {
+      "id": 55,
+      "name": "Admin upload anh len MinIO",
+      "method": "POST",
+      "path": "/api/admin/uploads/images",
+      "auth_required": true,
+      "admin_required": true,
+      "content_type": "multipart/form-data",
+      "form_data": {
+        "file": {
+          "type": "file",
+          "required": true,
+          "description": "Image file. Supported: jpeg, png, webp, gif. Max size: 5MB."
+        },
+        "folder": {
+          "type": "string",
+          "required": false,
+          "default": "products",
+          "description": "MinIO object folder/prefix."
+        }
+      },
+      "notes": [
+        "Dung API nay khi admin upload anh san pham/category.",
+        "Backend upload file len MinIO bucket va tra ve url public.",
+        "Frontend lay data.url roi gui tiep trong body POST/PUT product qua field image.",
+        "Flow edit product: upload image -> lay url -> PUT /api/admin/products/:id voi image=url."
+      ],
+      "curl_example": "curl -X POST http://localhost:8080/api/admin/uploads/images -H \"Authorization: Bearer <admin_token>\" -F \"file=@/path/to/product.webp\" -F \"folder=products\"",
+      "responses": {
+        "success": {
+          "status": 201,
+          "body": {
+            "code": 201,
+            "msg": "Upload image successfully",
+            "data": {
+              "bucket": "shop-cau-long",
+              "object_key": "products/56f4f6a2-1c77-4b0c-a5fd-72d2c56ad70e.webp",
+              "url": "http://localhost:9000/shop-cau-long/products/56f4f6a2-1c77-4b0c-a5fd-72d2c56ad70e.webp",
+              "content_type": "image/webp",
+              "size": 123456
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 403 or 500",
+          "body": {
+            "code": 400,
+            "msg": "unsupported file type",
+            "data": null
+          }
+        }
+      }
     }
   ]
 }

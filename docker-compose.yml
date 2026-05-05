@@ -35,8 +35,27 @@ services:
       - backend-network
     restart: unless-stopped
 
+  # MinIO - S3-compatible object storage
+  minio:
+    image: minio/minio:latest
+    container_name: order-backend-minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - backend-network
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+    driver: local
+  minio_data:
     driver: local
 
 networks:

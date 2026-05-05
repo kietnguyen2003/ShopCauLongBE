@@ -39,12 +39,13 @@ The current checkout flow is cart-based: users add products to cart, choose an a
 
 ## 3. Tech Stack
 
-- Language: Go 1.21
+- Language: Go 1.22
 - HTTP framework: Gin
 - Database: PostgreSQL
 - ORM: GORM
 - Authentication: JWT
 - Password hashing: bcrypt
+- Object storage: MinIO
 - Local database tooling: Docker Compose, PostgreSQL 15, pgAdmin
 
 ## 4. System Architecture
@@ -251,6 +252,7 @@ Detailed examples are maintained in `api.json`.
 | PUT | `/api/admin/coupons/:id` | Yes | Yes | Update coupon |
 | DELETE | `/api/admin/coupons/:id` | Yes | Yes | Disable coupon |
 | PATCH | `/api/admin/coupons/:id/status` | Yes | Yes | Activate/deactivate coupon |
+| POST | `/api/admin/uploads/images` | Yes | Yes | Upload image to MinIO |
 
 ## 8. Authentication Flow
 
@@ -401,7 +403,7 @@ Backend validates coupon(s) again during order creation and enforces:
 
 Prerequisites:
 
-- Go 1.21+
+- Go 1.22+
 - Docker and Docker Compose
 - PostgreSQL if not using Docker
 
@@ -455,10 +457,16 @@ Variables:
 | `POSTGRES_PASSWORD` | `password` | Docker Postgres password |
 | `PGADMIN_DEFAULT_EMAIL` | `admin@example.com` | pgAdmin login email |
 | `PGADMIN_DEFAULT_PASSWORD` | `admin` | pgAdmin login password |
+| `MINIO_ENDPOINT` | `localhost:9000` | MinIO API endpoint |
+| `MINIO_ACCESS_KEY` | `minioadmin` | MinIO access key |
+| `MINIO_SECRET_KEY` | `minioadmin` | MinIO secret key |
+| `MINIO_BUCKET` | `shop-cau-long` | Bucket for uploaded files |
+| `MINIO_USE_SSL` | `false` | Whether MinIO API uses HTTPS |
+| `MINIO_PUBLIC_URL` | `http://localhost:9000` | Public base URL for uploaded objects |
 
 ## 13. Docker Setup
 
-This repository includes `docker-compose.yml` for local PostgreSQL and pgAdmin.
+This repository includes `docker-compose.yml` for local PostgreSQL, pgAdmin, and MinIO.
 
 Start services:
 
@@ -482,6 +490,53 @@ Services:
 
 - PostgreSQL: `localhost:5432`
 - pgAdmin: `http://localhost:5050`
+- MinIO API: `http://localhost:9000`
+- MinIO Console: `http://localhost:9001`
+
+MinIO default credentials:
+
+- Username: `minioadmin`
+- Password: `minioadmin`
+
+### Image upload with MinIO
+
+Admin users can upload images to MinIO:
+
+```http
+POST /api/admin/uploads/images
+Authorization: Bearer <admin_token>
+Content-Type: multipart/form-data
+```
+
+Form fields:
+
+- `file`: image file, required. Supported: JPEG, PNG, WebP, GIF.
+- `folder`: optional object folder, defaults to `products`.
+
+Example:
+
+```bash
+curl -X POST http://localhost:8080/api/admin/uploads/images \
+  -H "Authorization: Bearer <admin_token>" \
+  -F "file=@/path/to/product.webp" \
+  -F "folder=products"
+```
+
+Response:
+
+```json
+{
+  "code": 201,
+  "msg": "Upload image successfully",
+  "data": {
+    "bucket": "shop-cau-long",
+    "object_key": "products/<generated-id>.webp",
+    "url": "http://localhost:9000/shop-cau-long/products/<generated-id>.webp",
+    "content_type": "image/webp",
+    "size": 123456
+  }
+}
+```
 
 There is no application Dockerfile in the current repository snapshot; run the Go backend locally with `go run cmd/server/main.go`.
 

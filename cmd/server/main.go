@@ -12,9 +12,11 @@ import (
 	"kafka-order-demo/backend/internal/application/order"
 	"kafka-order-demo/backend/internal/application/product"
 	"kafka-order-demo/backend/internal/application/review"
+	"kafka-order-demo/backend/internal/application/upload"
 	"kafka-order-demo/backend/internal/infrastructure/config"
 	"kafka-order-demo/backend/internal/infrastructure/database"
 	"kafka-order-demo/backend/internal/infrastructure/security"
+	"kafka-order-demo/backend/internal/infrastructure/storage"
 	httpHandlers "kafka-order-demo/backend/internal/interfaces/http"
 
 	"github.com/gin-contrib/cors"
@@ -52,6 +54,10 @@ func main() {
 	passwordHasher := security.NewBcryptHasher()
 	tokenProvider := security.NewJWTProvider(cfg.JWTSecret)
 	notificationHub := httpHandlers.NewNotificationHub()
+	objectStorage, err := storage.NewMinIOStorage(cfg.MinIO)
+	if err != nil {
+		log.Fatal("Failed to initialize object storage:", err)
+	}
 
 	// Initialize services
 	addressService := address.NewService(addressRepo)
@@ -63,6 +69,7 @@ func main() {
 	notificationService := notification.NewService(notificationRepo, notificationHub)
 	orderService := order.NewService(orderRepo, productRepo, addressRepo, cartRepo, couponRepo, notificationService)
 	reviewService := review.NewService(reviewRepo, productRepo, orderRepo)
+	uploadService := upload.NewService(objectStorage)
 
 	// Initialize handlers
 	addressHandler := httpHandlers.NewAddressHandler(addressService)
@@ -74,9 +81,11 @@ func main() {
 	reviewHandler := httpHandlers.NewReviewHandler(reviewService)
 	couponHandler := httpHandlers.NewCouponHandler(couponService)
 	notificationHandler := httpHandlers.NewNotificationHandler(notificationService, notificationHub)
+	uploadHandler := httpHandlers.NewUploadHandler(uploadService)
 
 	// Setup Gin router
 	r := gin.Default()
+	r.MaxMultipartMemory = 8 << 20
 
 	// CORS middleware
 	r.Use(cors.New(cors.Config{
@@ -87,13 +96,13 @@ func main() {
 	}))
 
 	// Setup routes
-	setupRoutes(r, addressHandler, authHandler, cartHandler, orderHandler, productHandler, categoryHandler, reviewHandler, couponHandler, notificationHandler)
+	setupRoutes(r, addressHandler, authHandler, cartHandler, orderHandler, productHandler, categoryHandler, reviewHandler, couponHandler, notificationHandler, uploadHandler)
 
 	log.Printf("Server starting on port %s", cfg.Port)
 	log.Fatal(r.Run(":" + cfg.Port))
 }
 
-func setupRoutes(r *gin.Engine, addressHandler *httpHandlers.AddressHandler, authHandler *httpHandlers.AuthHandler, cartHandler *httpHandlers.CartHandler, orderHandler *httpHandlers.OrderHandler, productHandler *httpHandlers.ProductHandler, categoryHandler *httpHandlers.CategoryHandler, reviewHandler *httpHandlers.ReviewHandler, couponHandler *httpHandlers.CouponHandler, notificationHandler *httpHandlers.NotificationHandler) {
+func setupRoutes(r *gin.Engine, addressHandler *httpHandlers.AddressHandler, authHandler *httpHandlers.AuthHandler, cartHandler *httpHandlers.CartHandler, orderHandler *httpHandlers.OrderHandler, productHandler *httpHandlers.ProductHandler, categoryHandler *httpHandlers.CategoryHandler, reviewHandler *httpHandlers.ReviewHandler, couponHandler *httpHandlers.CouponHandler, notificationHandler *httpHandlers.NotificationHandler, uploadHandler *httpHandlers.UploadHandler) {
 	// Auth routes
 	auth := r.Group("/auth")
 	{
@@ -128,14 +137,18 @@ func setupRoutes(r *gin.Engine, addressHandler *httpHandlers.AddressHandler, aut
 		api.PUT("/addresses/:id", addressHandler.UpdateAddress)
 		api.DELETE("/addresses/:id", addressHandler.DeleteAddress)
 		api.PATCH("/addresses/:id/default", addressHandler.SetDefaultAddress)
+
 		api.GET("/cart", cartHandler.GetCart)
 		api.POST("/cart/items", cartHandler.AddItem)
 		api.PUT("/cart/items/:id", cartHandler.UpdateItem)
 		api.DELETE("/cart/items/:id", cartHandler.DeleteItem)
 		api.DELETE("/cart/clear", cartHandler.ClearCart)
+
 		api.POST("/orders", orderHandler.CreateOrder)
 		api.GET("/orders", orderHandler.GetUserOrders)
+
 		api.POST("/products/:id/reviews", reviewHandler.CreateReview)
+
 		api.PUT("/reviews/:id", reviewHandler.UpdateReview)
 		api.DELETE("/reviews/:id", reviewHandler.DeleteReview)
 		api.GET("/coupons", couponHandler.GetActiveCoupons)
@@ -153,19 +166,24 @@ func setupRoutes(r *gin.Engine, addressHandler *httpHandlers.AddressHandler, aut
 		{
 			admin.GET("/orders", orderHandler.GetAllOrders)
 			admin.PUT("/orders/:id", orderHandler.UpdateOrderStatus)
+
 			admin.POST("/products", productHandler.CreateProduct)
 			admin.PUT("/products/:id", productHandler.UpdateProduct)
 			admin.DELETE("/products/:id", productHandler.DeleteProduct)
 			admin.PATCH("/products/:id/stock", productHandler.UpdateProductStock)
+
 			admin.POST("/categories", categoryHandler.CreateCategory)
 			admin.PUT("/categories/:id", categoryHandler.UpdateCategory)
 			admin.DELETE("/categories/:id", categoryHandler.DeleteCategory)
+
 			admin.GET("/coupons", couponHandler.GetCoupons)
 			admin.POST("/coupons", couponHandler.CreateCoupon)
 			admin.GET("/coupons/:id", couponHandler.GetCoupon)
 			admin.PUT("/coupons/:id", couponHandler.UpdateCoupon)
 			admin.DELETE("/coupons/:id", couponHandler.DeleteCoupon)
 			admin.PATCH("/coupons/:id/status", couponHandler.UpdateCouponStatus)
+
+			admin.POST("/uploads/images", uploadHandler.UploadImage)
 		}
 	}
 }

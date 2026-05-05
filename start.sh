@@ -12,7 +12,7 @@ fi
 echo "🐳 Docker is running. Starting database services..."
 
 # Start database services
-echo "🗄️ Starting PostgreSQL and pgAdmin..."
+echo "🗄️ Starting PostgreSQL, pgAdmin, and MinIO..."
 docker-compose up -d
 
 # Wait for database to be ready
@@ -31,6 +31,10 @@ echo "   🗄️  PostgreSQL: localhost:5432"
 echo "   🌐 pgAdmin:    http://localhost:5050"
 echo "      - Email:    admin@example.com"
 echo "      - Password: admin"
+echo "   📦 MinIO API:  http://localhost:9000"
+echo "   🖥️  MinIO UI:   http://localhost:9001"
+echo "      - User:     minioadmin"
+echo "      - Password: minioadmin"
 echo ""
 echo "🚀 Now start the Go backend:"
 echo "   go mod tidy"
