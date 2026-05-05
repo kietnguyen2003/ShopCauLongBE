@@ -1,6 +1,7 @@
 package order
 
 import (
+	appNotification "kafka-order-demo/backend/internal/application/notification"
 	domainAddress "kafka-order-demo/backend/internal/domain/address"
 	domainCart "kafka-order-demo/backend/internal/domain/cart"
 	domainCoupon "kafka-order-demo/backend/internal/domain/coupon"
@@ -37,4 +38,8 @@ type CartRepository interface {
 type CouponRepository interface {
 	GetByCode(code string) (*domainCoupon.Coupon, error)
 	CountRedemptionsByCouponIDAndUserID(couponID, userID uint) (int, error)
+}
+
+type NotificationPublisher interface {
+	CreateOrderStatusNotification(userID, orderID uint, status string) (*appNotification.NotificationResponse, error)
 }

@@ -17,15 +17,17 @@ type Service struct {
 	addressRepo AddressRepository
 	cartRepo    CartRepository
 	couponRepo  CouponRepository
+	notifier    NotificationPublisher
 }
 
-func NewService(orderRepo OrderRepository, productRepo ProductRepository, addressRepo AddressRepository, cartRepo CartRepository, couponRepo CouponRepository) *Service {
+func NewService(orderRepo OrderRepository, productRepo ProductRepository, addressRepo AddressRepository, cartRepo CartRepository, couponRepo CouponRepository, notifier NotificationPublisher) *Service {
 	return &Service{
 		orderRepo:   orderRepo,
 		productRepo: productRepo,
 		addressRepo: addressRepo,
 		cartRepo:    cartRepo,
 		couponRepo:  couponRepo,
+		notifier:    notifier,
 	}
 }
 
@@ -272,6 +274,7 @@ func (s *Service) UpdateOrderStatus(id uint, status domainOrder.OrderStatus) err
 			return err
 		}
 
+		s.notifyOrderStatusChanged(ord)
 		return nil
 	}
 
@@ -280,9 +283,19 @@ func (s *Service) UpdateOrderStatus(id uint, status domainOrder.OrderStatus) err
 		return err
 	}
 
+	s.notifyOrderStatusChanged(ord)
 	return nil
 }
 
 func (s *Service) ClearAllOrders() error {
 	return s.orderRepo.DeleteAll()
+}
+
+func (s *Service) notifyOrderStatusChanged(ord *domainOrder.Order) {
+	if s.notifier == nil {
+		return
+	}
+	if _, err := s.notifier.CreateOrderStatusNotification(ord.UserID, ord.ID, string(ord.Status)); err != nil {
+		log.Println("failed to create order status notification:", err)
+	}
 }

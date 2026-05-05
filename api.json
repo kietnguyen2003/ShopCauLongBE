@@ -1846,6 +1846,220 @@
           }
         }
       }
+    },
+    {
+      "id": 50,
+      "name": "Lay danh sach notification cua user",
+      "method": "GET",
+      "path": "/api/notifications",
+      "auth_required": true,
+      "query_params": {
+        "page": {
+          "type": "integer",
+          "default": 1
+        },
+        "limit": {
+          "type": "integer",
+          "default": 20,
+          "max": 100
+        }
+      },
+      "notes": [
+        "Tra ve notification cua user dang dang nhap.",
+        "Danh sach duoc sap xep moi nhat truoc.",
+        "Dung API nay khi user bam vao icon notification de xem chi tiet."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get notifications successfully",
+            "data": {
+              "items": [
+                {
+                  "id": 1,
+                  "user_id": 2,
+                  "type": "order_confirmed",
+                  "title": "Order confirmed",
+                  "message": "Your order #12 has been confirmed.",
+                  "data": "{\"order_id\":12,\"status\":\"confirmed\"}",
+                  "is_read": false,
+                  "read_at": null,
+                  "created_at": "2026-05-05T10:00:00+07:00",
+                  "updated_at": "2026-05-05T10:00:00+07:00"
+                }
+              ],
+              "page": 1,
+              "limit": 20,
+              "total": 1,
+              "total_pages": 1
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 500",
+          "body": {
+            "code": 401,
+            "msg": "Authorization header required",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 51,
+      "name": "Lay so luong notification chua doc",
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "auth_required": true,
+      "notes": [
+        "Dung API nay de hien thi dau do tren icon notification.",
+        "Chi dem notification chua doc cua user dang dang nhap."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Get unread notification count successfully",
+            "data": {
+              "count": 3
+            }
+          }
+        },
+        "error": {
+          "status": "401 or 500",
+          "body": {
+            "code": 401,
+            "msg": "Authorization header required",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 52,
+      "name": "Danh dau mot notification da doc",
+      "method": "PATCH",
+      "path": "/api/notifications/:id/read",
+      "auth_required": true,
+      "path_params": {
+        "id": "Notification ID"
+      },
+      "request_body": null,
+      "notes": [
+        "Chi user so huu notification moi co the danh dau da doc.",
+        "Neu notification khong ton tai hoac khong thuoc user hien tai thi tra loi 404."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Mark notification as read successfully",
+            "data": {
+              "id": 1,
+              "user_id": 2,
+              "type": "order_confirmed",
+              "title": "Order confirmed",
+              "message": "Your order #12 has been confirmed.",
+              "data": "{\"order_id\":12,\"status\":\"confirmed\"}",
+              "is_read": true,
+              "read_at": "2026-05-05T10:05:00+07:00",
+              "created_at": "2026-05-05T10:00:00+07:00",
+              "updated_at": "2026-05-05T10:05:00+07:00"
+            }
+          }
+        },
+        "error": {
+          "status": "400 or 401 or 404",
+          "body": {
+            "code": 404,
+            "msg": "record not found",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 53,
+      "name": "Danh dau tat ca notification da doc",
+      "method": "PATCH",
+      "path": "/api/notifications/read-all",
+      "auth_required": true,
+      "request_body": null,
+      "notes": [
+        "Danh dau tat ca notification chua doc cua user hien tai thanh da doc.",
+        "Thuong dung khi user mo notification panel va chon mark all as read."
+      ],
+      "responses": {
+        "success": {
+          "status": 200,
+          "body": {
+            "code": 200,
+            "msg": "Mark all notifications as read successfully",
+            "data": null
+          }
+        },
+        "error": {
+          "status": "401 or 500",
+          "body": {
+            "code": 401,
+            "msg": "Authorization header required",
+            "data": null
+          }
+        }
+      }
+    },
+    {
+      "id": 54,
+      "name": "Ket noi WebSocket notification real-time",
+      "method": "GET",
+      "path": "/api/notifications/ws",
+      "protocol": "websocket",
+      "auth_required": true,
+      "query_params": {
+        "token": {
+          "type": "string",
+          "description": "JWT token, dung cho WebSocket client khong gui duoc Authorization header"
+        }
+      },
+      "headers": {
+        "Authorization": "Bearer <token>"
+      },
+      "notes": [
+        "Co the xac thuc bang Authorization header hoac query ?token=<jwt>.",
+        "Sau khi ket noi thanh cong, backend se AddClient user hien tai vao NotificationHub.",
+        "Khi admin confirm/cancel order, backend tao notification trong DB va push realtime neu user dang online.",
+        "Neu user offline, notification van duoc luu trong DB va lay lai bang GET /api/notifications."
+      ],
+      "websocket_message_example": {
+        "id": 1,
+        "user_id": 2,
+        "type": "order_cancelled",
+        "title": "Order cancelled",
+        "message": "Your order #12 has been cancelled.",
+        "data": "{\"order_id\":12,\"status\":\"cancelled\"}",
+        "is_read": false,
+        "read_at": null,
+        "created_at": "2026-05-05T10:00:00+07:00",
+        "updated_at": "2026-05-05T10:00:00+07:00"
+      },
+      "responses": {
+        "success": {
+          "status": 101,
+          "body": "Switching Protocols"
+        },
+        "error": {
+          "status": "401",
+          "body": {
+            "code": 401,
+            "msg": "Invalid token",
+            "data": null
+          }
+        }
+      }
     }
   ]
 }

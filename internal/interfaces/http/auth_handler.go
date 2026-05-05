@@ -162,13 +162,19 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
+		tokenString := ""
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+		if tokenString == "" {
+			tokenString = c.Query("token")
+		}
+		if tokenString == "" {
 			errorResponse(c, http.StatusUnauthorized, "Authorization header required")
 			c.Abort()
 			return
 		}
 
-		tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
 		claims, err := h.tokenProvider.Validate(tokenString)
 		if err != nil {
 			errorResponse(c, http.StatusUnauthorized, "Invalid token")

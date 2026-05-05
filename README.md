@@ -158,6 +158,11 @@ Detailed examples are maintained in `api.json`.
 | GET | `/api/coupons` | Yes | Available unused active coupons |
 | GET | `/api/coupons/:id` | Yes | Available unused active coupon detail |
 | POST | `/api/coupons/validate` | Yes | Validate coupon(s) against current cart |
+| GET | `/api/notifications` | Yes | User notifications with pagination |
+| GET | `/api/notifications/unread-count` | Yes | Unread notification count for red badge UI |
+| PATCH | `/api/notifications/:id/read` | Yes | Mark one notification as read |
+| PATCH | `/api/notifications/read-all` | Yes | Mark all notifications as read |
+| GET | `/api/notifications/ws` | Yes | WebSocket stream for real-time notifications |
 
 ### Admin APIs
 
@@ -191,6 +196,7 @@ Authorization: Bearer <token>
 
 4. Middleware validates JWT and stores `user_id` and `is_admin` in Gin context.
 5. Admin routes additionally require `is_admin=true`.
+6. WebSocket notification clients may also pass the same JWT as `?token=<token>` when connecting to `/api/notifications/ws`.
 
 Seed admin:
 
