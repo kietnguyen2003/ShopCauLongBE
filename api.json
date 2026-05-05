@@ -527,6 +527,7 @@
         "price": 1500000,
         "stock": 10,
         "image": "https://example.com/product.png",
+        "category_id": 2,
         "category": "racket"
       },
       "responses": {
@@ -562,10 +563,12 @@
       },
       "request_body": {
         "name": "Ten moi",
+        "category_id": 2,
         "category": "racket"
       },
       "notes": [
-        "Co the update rieng le tung field."
+        "Co the update rieng le tung field.",
+        "Uu tien dung category_id de rang buoc voi bang categories. Field category van duoc ho tro de tuong thich client cu."
       ],
       "responses": {
         "success": {
@@ -927,7 +930,8 @@
       "notes": [
         "Status hop le: pending, confirmed, cancelled",
         "Don pending co the doi sang confirmed hoac cancelled. Don confirmed/cancelled khong the doi tiep.",
-        "Neu status update la cancelled thi backend restock lai cac san pham trong order."
+        "Neu status update la cancelled thi backend restock lai cac san pham trong order.",
+        "Neu status update la confirmed hoac cancelled thi backend tao notification cho user."
       ],
       "responses": {
         "success": {

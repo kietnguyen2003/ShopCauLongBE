@@ -18,5 +18,6 @@ type ProductRepository interface {
 }
 
 type CategoryRepository interface {
+	GetByID(id uint) (*domainCategory.Category, error)
 	GetByName(name string) (*domainCategory.Category, error)
 }

@@ -174,12 +174,12 @@ func parseProductQuery(c *gin.Context) (appProduct.ProductQuery, error) {
 		limit = maxProductLimit
 	}
 
-	minPrice, err := parseOptionalNonNegativeFloatQuery(c, "min_price")
+	minPrice, err := parseOptionalNonNegativeInt64Query(c, "min_price")
 	if err != nil {
 		return appProduct.ProductQuery{}, err
 	}
 
-	maxPrice, err := parseOptionalNonNegativeFloatQuery(c, "max_price")
+	maxPrice, err := parseOptionalNonNegativeInt64Query(c, "max_price")
 	if err != nil {
 		return appProduct.ProductQuery{}, err
 	}
@@ -188,14 +188,20 @@ func parseProductQuery(c *gin.Context) (appProduct.ProductQuery, error) {
 		return appProduct.ProductQuery{}, errors.New("min_price cannot be greater than max_price")
 	}
 
+	categoryID, err := parseOptionalPositiveUintQuery(c, "category_id")
+	if err != nil {
+		return appProduct.ProductQuery{}, err
+	}
+
 	return appProduct.ProductQuery{
-		Page:     page,
-		Limit:    limit,
-		Search:   c.Query("search"),
-		Category: c.Query("category"),
-		MinPrice: minPrice,
-		MaxPrice: maxPrice,
-		Sort:     c.Query("sort"),
+		Page:       page,
+		Limit:      limit,
+		Search:     c.Query("search"),
+		CategoryID: categoryID,
+		Category:   c.Query("category"),
+		MinPrice:   minPrice,
+		MaxPrice:   maxPrice,
+		Sort:       c.Query("sort"),
 	}, nil
 }
 
@@ -213,16 +219,30 @@ func parsePositiveIntQuery(c *gin.Context, key string, defaultValue int) (int, e
 	return parsed, nil
 }
 
-func parseOptionalNonNegativeFloatQuery(c *gin.Context, key string) (*float64, error) {
+func parseOptionalNonNegativeInt64Query(c *gin.Context, key string) (*int64, error) {
 	value := c.Query(key)
 	if value == "" {
 		return nil, nil
 	}
 
-	parsed, err := strconv.ParseFloat(value, 64)
+	parsed, err := strconv.ParseInt(value, 10, 64)
 	if err != nil || parsed < 0 {
-		return nil, errors.New(key + " must be a non-negative number")
+		return nil, errors.New(key + " must be a non-negative integer")
 	}
 
 	return &parsed, nil
+}
+
+func parseOptionalPositiveUintQuery(c *gin.Context, key string) (uint, error) {
+	value := c.Query(key)
+	if value == "" {
+		return 0, nil
+	}
+
+	parsed, err := strconv.ParseUint(value, 10, 32)
+	if err != nil || parsed == 0 {
+		return 0, errors.New(key + " must be a positive integer")
+	}
+
+	return uint(parsed), nil
 }

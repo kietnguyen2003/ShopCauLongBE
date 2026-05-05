@@ -204,19 +204,19 @@ func (s *Service) ValidateCoupon(req ValidateCouponRequest) (*ValidateCouponResp
 	return s.ValidateCouponsForAmount(req.UserID, normalizeCouponCodes(req.Code, req.Codes), subtotal)
 }
 
-func (s *Service) ValidateCouponForAmount(userID uint, code string, subtotalAmount float64) (*ValidateCouponResponse, error) {
+func (s *Service) ValidateCouponForAmount(userID uint, code string, subtotalAmount int64) (*ValidateCouponResponse, error) {
 	return s.ValidateCouponsForAmount(userID, []string{code}, subtotalAmount)
 }
 
-func (s *Service) ValidateCouponsForAmount(userID uint, codes []string, subtotalAmount float64) (*ValidateCouponResponse, error) {
+func (s *Service) ValidateCouponsForAmount(userID uint, codes []string, subtotalAmount int64) (*ValidateCouponResponse, error) {
 	if len(codes) == 0 {
 		return nil, domainCoupon.ErrCouponCodeRequired
 	}
 
 	var couponCodes []string
 	var discountType string
-	var discountValue float64
-	var totalDiscount float64
+	var discountValue int64
+	var totalDiscount int64
 	seenCodes := make(map[string]struct{})
 
 	for _, code := range codes {
@@ -252,7 +252,7 @@ func (s *Service) ValidateCouponsForAmount(userID uint, codes []string, subtotal
 	}, nil
 }
 
-func (s *Service) validateSingleCouponForAmount(userID uint, code string, subtotalAmount float64) (*domainCoupon.Coupon, float64, error) {
+func (s *Service) validateSingleCouponForAmount(userID uint, code string, subtotalAmount int64) (*domainCoupon.Coupon, int64, error) {
 	normalizedCode := domainCoupon.NormalizeCode(code)
 	if normalizedCode == "" {
 		return nil, 0, domainCoupon.ErrCouponCodeRequired
@@ -274,7 +274,7 @@ func (s *Service) validateSingleCouponForAmount(userID uint, code string, subtot
 	return coupon, coupon.CalculateDiscount(subtotalAmount), nil
 }
 
-func (s *Service) calculateCartSubtotal(userID uint) (float64, error) {
+func (s *Service) calculateCartSubtotal(userID uint) (int64, error) {
 	items, err := s.cartRepo.GetByUserID(userID)
 	if err != nil {
 		return 0, err
@@ -283,13 +283,13 @@ func (s *Service) calculateCartSubtotal(userID uint) (float64, error) {
 		return 0, ErrCartIsEmpty
 	}
 
-	var subtotal float64
+	var subtotal int64
 	for _, item := range items {
 		prod, err := s.productRepo.GetByID(item.ProductID)
 		if err != nil {
 			return 0, err
 		}
-		subtotal += prod.Price * float64(item.Quantity)
+		subtotal += prod.Price * int64(item.Quantity)
 	}
 
 	return subtotal, nil

@@ -73,6 +73,28 @@ Main tables:
 - `reviews`: product reviews from users.
 - `coupons`: coupon definitions managed by admin.
 - `coupon_redemptions`: coupon usage history per user and order.
+- `notifications`: persisted user notifications for realtime and offline notification UI.
+
+### Data Structure Organization
+
+The database is organized around ecommerce ownership and transaction history:
+
+- `users` owns user-facing data such as `addresses`, `carts`, `orders`, `reviews`, and `notifications`.
+- `categories` owns product grouping through `products.category_id`.
+- `products` stores current catalog state such as price, stock, image, status, and category.
+- `carts` and `cart_items` represent the active pre-checkout state.
+- `orders` and `order_items` represent immutable purchase history. `order_items` stores product snapshots such as name, price, image, category, and description at purchase time.
+- `coupons` stores coupon definitions, while `coupon_redemptions` records actual coupon usage for audit and per-user usage limits.
+- `notifications` stores order status notifications so online users can receive realtime WebSocket pushes and offline users can still see unread notifications later.
+
+Important relationship rules:
+
+- Product category is normalized with `products.category_id -> categories.id`; the legacy `products.category` text field is still kept for compatibility/display.
+- Money fields use integer VND values (`BIGINT` in PostgreSQL, `int64` in Go) instead of floating point values.
+- Checkout stock decrement is performed atomically in the order transaction to reduce overselling risk.
+- Foreign keys protect important references between users, products, orders, coupons, reviews, and notifications.
+- Check constraints prevent invalid values such as negative stock, invalid quantity, invalid rating, or unsupported status values.
+- A partial unique index ensures each user can have only one default address.
 
 Important order fields:
 
@@ -96,7 +118,53 @@ Important coupon fields:
 - `start_at`, `end_at`: optional validity window.
 - `is_active`: whether customers can see/use the coupon.
 
-## 6. API Documentation
+## 6. Data Migration & Hardening
+
+Database schema creation starts with GORM `AutoMigrate`, then applies PostgreSQL-specific hardening:
+
+```text
+AutoMigrate(...)
+-> ApplyDatabaseHardening(...)
+```
+
+The hardening migration lives in:
+
+```text
+internal/infrastructure/database/hardening.go
+```
+
+It applies:
+
+- Foreign keys for `user_id`, `product_id`, `order_id`, `coupon_id`, and `category_id` relationships.
+- Indexes for common queries such as product category filtering, user order history, order status filtering, product status filtering, cart product lookup, and coupon code lookup.
+- Check constraints for stock, price, quantity, rating, order status, product status, and coupon discount type.
+- Partial unique index for one default address per user.
+- Backfill from legacy `products.category` text values into `products.category_id`.
+- Money column conversion from floating point storage to `BIGINT`.
+
+Important migration notes:
+
+- If an existing database contains orphan rows, foreign key creation can fail. Clean invalid data before applying the migration to production data.
+- If old money values contain decimals, conversion to `BIGINT` will truncate/cast them. This project stores VND as integer dong values.
+- `products.category` is kept for backward compatibility, but new clients should prefer `category_id`.
+- `order_items` intentionally keeps product snapshot fields so old orders remain readable even if product data changes later.
+
+Useful pre-migration checks:
+
+```sql
+SELECT *
+FROM orders o
+LEFT JOIN users u ON u.id = o.user_id
+WHERE u.id IS NULL;
+```
+
+```sql
+SELECT price
+FROM products
+WHERE price != price::BIGINT;
+```
+
+## 7. API Documentation
 
 All responses use:
 
@@ -184,7 +252,7 @@ Detailed examples are maintained in `api.json`.
 | DELETE | `/api/admin/coupons/:id` | Yes | Yes | Disable coupon |
 | PATCH | `/api/admin/coupons/:id/status` | Yes | Yes | Activate/deactivate coupon |
 
-## 7. Authentication Flow
+## 8. Authentication Flow
 
 1. User registers via `POST /auth/register`, or logs in via `POST /auth/login`.
 2. Backend returns JWT token and user info.
@@ -203,7 +271,7 @@ Seed admin:
 - Username: `admin`
 - Password: `password`
 
-## 8. Cart & Checkout Flow
+## 9. Cart & Checkout Flow
 
 1. User logs in.
 2. User adds products:
@@ -233,7 +301,7 @@ Seed admin:
 9. Order creation runs in a transaction. If any step fails, order is not created and cart is not cleared.
 10. Cart is cleared only after successful order creation.
 
-## 9. Coupon Flow
+## 10. Coupon Flow
 
 ### Admin coupon setup
 
@@ -329,7 +397,7 @@ Backend validates coupon(s) again during order creation and enforces:
 - duplicate coupon code rejection
 - total discount cannot exceed subtotal
 
-## 10. Installation & Setup
+## 11. Installation & Setup
 
 Prerequisites:
 
@@ -367,7 +435,7 @@ Run tests:
 env GOCACHE=/private/tmp/shop-go-cache go test ./...
 ```
 
-## 11. Environment Variables
+## 12. Environment Variables
 
 Create `.env` from `.env.example`:
 
@@ -388,7 +456,7 @@ Variables:
 | `PGADMIN_DEFAULT_EMAIL` | `admin@example.com` | pgAdmin login email |
 | `PGADMIN_DEFAULT_PASSWORD` | `admin` | pgAdmin login password |
 
-## 12. Docker Setup
+## 13. Docker Setup
 
 This repository includes `docker-compose.yml` for local PostgreSQL and pgAdmin.
 
@@ -417,7 +485,7 @@ Services:
 
 There is no application Dockerfile in the current repository snapshot; run the Go backend locally with `go run cmd/server/main.go`.
 
-## 13. Screenshots / Demo
+## 14. Screenshots / Demo
 
 The backend can be tested with the companion UI repository:
 
@@ -516,7 +584,7 @@ The `snapshot/` folder contains UI screenshots named by screen/function.
 
 ![Quan li coupon](snapshot/quan-li-coupon.png)
 
-## 14. Future Improvements
+## 15. Future Improvements
 
 - Add automated integration tests with a test database.
 - Add OpenAPI/Swagger documentation generated from handlers/models.

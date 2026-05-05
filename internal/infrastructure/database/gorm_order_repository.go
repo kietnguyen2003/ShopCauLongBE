@@ -15,11 +15,11 @@ import (
 )
 
 type GormOrder struct {
-	ID             uint    `gorm:"primaryKey"`
-	UserID         uint    `gorm:"not null"`
-	SubtotalAmount float64 `gorm:"default:0"`
-	DiscountAmount float64 `gorm:"default:0"`
-	TotalAmount    float64 `gorm:"not null"`
+	ID             uint  `gorm:"primaryKey"`
+	UserID         uint  `gorm:"not null"`
+	SubtotalAmount int64 `gorm:"default:0"`
+	DiscountAmount int64 `gorm:"default:0"`
+	TotalAmount    int64 `gorm:"not null"`
 	CouponID       *uint
 	CouponCode     string
 	CouponCodes    string
@@ -38,12 +38,12 @@ func (GormOrder) TableName() string {
 }
 
 type GormOrderItem struct {
-	ID          uint    `gorm:"primaryKey"`
-	OrderID     uint    `gorm:"not null"`
-	ProductID   uint    `gorm:"not null"`
-	Name        string  `gorm:"not null"`
-	Price       float64 `gorm:"not null"`
-	Quantity    int     `gorm:"not null"`
+	ID          uint   `gorm:"primaryKey"`
+	OrderID     uint   `gorm:"not null"`
+	ProductID   uint   `gorm:"not null"`
+	Name        string `gorm:"not null"`
+	Price       int64  `gorm:"not null"`
+	Quantity    int    `gorm:"not null"`
 	Image       string
 	Category    string
 	Description string
@@ -81,8 +81,9 @@ func (r *GormOrderRepository) Create(ord *order.Order) error {
 }
 
 func (r *GormOrderRepository) CreateWithProductStockUpdates(ord *order.Order, products []*product.Product) error {
+	_ = products
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := saveProducts(tx, products); err != nil {
+		if err := decreaseProductStocks(tx, ord); err != nil {
 			return err
 		}
 
@@ -101,8 +102,9 @@ func (r *GormOrderRepository) CreateWithProductStockUpdates(ord *order.Order, pr
 }
 
 func (r *GormOrderRepository) CreateWithProductStockUpdatesAndCoupons(ord *order.Order, products []*product.Product, redemptions []*coupon.Redemption) error {
+	_ = products
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := saveProducts(tx, products); err != nil {
+		if err := decreaseProductStocks(tx, ord); err != nil {
 			return err
 		}
 
@@ -246,23 +248,24 @@ func countCouponRedemptionsByUser(tx *gorm.DB, couponID, userID uint) (int, erro
 	return int(count), nil
 }
 
-func saveProducts(tx *gorm.DB, products []*product.Product) error {
-	for _, prod := range products {
-		gormProduct := &GormProduct{
-			ID:          prod.ID,
-			Name:        prod.Name,
-			Description: prod.Description,
-			Price:       prod.Price,
-			Stock:       prod.Stock,
-			Image:       prod.Image,
-			Category:    prod.Category,
-			Status:      productStatus(prod.Status),
-			CreatedAt:   prod.CreatedAt.Unix(),
-			UpdatedAt:   prod.UpdatedAt.Unix(),
-		}
+func decreaseProductStocks(tx *gorm.DB, ord *order.Order) error {
+	quantitiesByProductID := make(map[uint]int)
+	for _, item := range ord.OrderItems {
+		quantitiesByProductID[item.ProductID] += item.Quantity
+	}
 
-		if err := tx.Save(gormProduct).Error; err != nil {
-			return err
+	for productID, quantity := range quantitiesByProductID {
+		result := tx.Model(&GormProduct{}).
+			Where("id = ? AND stock >= ?", productID, quantity).
+			Updates(map[string]interface{}{
+				"stock":      gorm.Expr("stock - ?", quantity),
+				"updated_at": time.Now().Unix(),
+			})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return product.ErrInsufficientStock
 		}
 	}
 

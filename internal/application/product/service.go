@@ -88,12 +88,13 @@ func (s *Service) SearchProducts(keyword string) ([]ProductResponse, error) {
 }
 
 func (s *Service) CreateProduct(req ProductRequest) (*ProductResponse, error) {
-	prod, err := domainProduct.NewProduct(req.Name, req.Description, req.Price, req.Stock, req.Image, req.Category)
+	categoryID, categoryName, err := s.resolveCategory(req.CategoryID, req.Category)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := s.ensureCategoryExists(req.Category); err != nil {
+	prod, err := domainProduct.NewProduct(req.Name, req.Description, req.Price, req.Stock, req.Image, categoryID, categoryName)
+	if err != nil {
 		return nil, err
 	}
 
@@ -117,6 +118,7 @@ func (s *Service) UpdateProduct(id uint, req ProductUpdateRequest) (*ProductResp
 	price := prod.Price
 	stock := prod.Stock
 	image := prod.Image
+	categoryID := prod.CategoryID
 	category := prod.Category
 
 	if req.Name != nil {
@@ -134,14 +136,19 @@ func (s *Service) UpdateProduct(id uint, req ProductUpdateRequest) (*ProductResp
 	if req.Image != nil {
 		image = *req.Image
 	}
+	if req.CategoryID != nil {
+		categoryID = *req.CategoryID
+	}
 	if req.Category != nil {
 		category = *req.Category
-		if err := s.ensureCategoryExists(category); err != nil {
-			return nil, err
-		}
 	}
 
-	err = prod.UpdateDetails(name, description, price, stock, image, category)
+	categoryID, category, err = s.resolveCategory(categoryID, category)
+	if err != nil {
+		return nil, err
+	}
+
+	err = prod.UpdateDetails(name, description, price, stock, image, categoryID, category)
 	if err != nil {
 		return nil, err
 	}
@@ -176,10 +183,23 @@ func (s *Service) UpdateProductStock(id uint, stock int) error {
 	return s.productRepo.Update(prod)
 }
 
-func (s *Service) ensureCategoryExists(category string) error {
-	if _, err := s.categoryRepo.GetByName(category); err != nil {
-		return ErrCategoryNotFound
+func (s *Service) resolveCategory(categoryID uint, categoryName string) (uint, string, error) {
+	if categoryID != 0 {
+		category, err := s.categoryRepo.GetByID(categoryID)
+		if err != nil {
+			return 0, "", ErrCategoryNotFound
+		}
+		return category.ID, category.Name, nil
 	}
 
-	return nil
+	if categoryName == "" {
+		return 0, "", ErrCategoryNotFound
+	}
+
+	category, err := s.categoryRepo.GetByName(categoryName)
+	if err != nil {
+		return 0, "", ErrCategoryNotFound
+	}
+
+	return category.ID, category.Name, nil
 }

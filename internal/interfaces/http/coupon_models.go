@@ -10,9 +10,9 @@ type couponRequest struct {
 	Name              string     `json:"name"`
 	Description       string     `json:"description"`
 	DiscountType      string     `json:"discount_type"`
-	DiscountValue     float64    `json:"discount_value"`
-	MinOrderAmount    float64    `json:"min_order_amount"`
-	MaxDiscountAmount *float64   `json:"max_discount_amount"`
+	DiscountValue     int64      `json:"discount_value"`
+	MinOrderAmount    int64      `json:"min_order_amount"`
+	MaxDiscountAmount *int64     `json:"max_discount_amount"`
 	UsageLimit        *int       `json:"usage_limit"`
 	UsageLimitPerUser int        `json:"usage_limit_per_user"`
 	StartAt           *time.Time `json:"start_at"`
@@ -25,9 +25,9 @@ type couponUpdateRequest struct {
 	Name              *string    `json:"name"`
 	Description       *string    `json:"description"`
 	DiscountType      *string    `json:"discount_type"`
-	DiscountValue     *float64   `json:"discount_value"`
-	MinOrderAmount    *float64   `json:"min_order_amount"`
-	MaxDiscountAmount *float64   `json:"max_discount_amount"`
+	DiscountValue     *int64     `json:"discount_value"`
+	MinOrderAmount    *int64     `json:"min_order_amount"`
+	MaxDiscountAmount *int64     `json:"max_discount_amount"`
 	UsageLimit        *int       `json:"usage_limit"`
 	UsageLimitPerUser *int       `json:"usage_limit_per_user"`
 	StartAt           *time.Time `json:"start_at"`
@@ -50,9 +50,9 @@ type couponResponse struct {
 	Name              string     `json:"name"`
 	Description       string     `json:"description"`
 	DiscountType      string     `json:"discount_type"`
-	DiscountValue     float64    `json:"discount_value"`
-	MinOrderAmount    float64    `json:"min_order_amount"`
-	MaxDiscountAmount *float64   `json:"max_discount_amount"`
+	DiscountValue     int64      `json:"discount_value"`
+	MinOrderAmount    int64      `json:"min_order_amount"`
+	MaxDiscountAmount *int64     `json:"max_discount_amount"`
 	UsageLimit        *int       `json:"usage_limit"`
 	UsedCount         int        `json:"used_count"`
 	UsageLimitPerUser int        `json:"usage_limit_per_user"`
@@ -75,10 +75,10 @@ type validateCouponResponse struct {
 	CouponCode     string   `json:"coupon_code"`
 	CouponCodes    []string `json:"coupon_codes"`
 	DiscountType   string   `json:"discount_type"`
-	DiscountValue  float64  `json:"discount_value"`
-	SubtotalAmount float64  `json:"subtotal_amount"`
-	DiscountAmount float64  `json:"discount_amount"`
-	TotalAmount    float64  `json:"total_amount"`
+	DiscountValue  int64    `json:"discount_value"`
+	SubtotalAmount int64    `json:"subtotal_amount"`
+	DiscountAmount int64    `json:"discount_amount"`
+	TotalAmount    int64    `json:"total_amount"`
 }
 
 func toCouponInput(req couponRequest) appCoupon.CouponRequest {

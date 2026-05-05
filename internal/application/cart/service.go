@@ -28,7 +28,7 @@ func (s *Service) GetCart(userID uint) (*CartResponse, error) {
 	}
 
 	responses := make([]CartItemResponse, 0, len(items))
-	var totalAmount float64
+	var totalAmount int64
 	var totalItems int
 	for _, item := range items {
 		prod, err := s.productRepo.GetByID(item.ProductID)

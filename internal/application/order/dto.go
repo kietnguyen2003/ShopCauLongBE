@@ -26,7 +26,7 @@ type OrderItemResponse struct {
 	ID          uint
 	ProductID   uint
 	Name        string
-	Price       float64
+	Price       int64
 	Quantity    int
 	Image       string
 	Category    string
@@ -38,9 +38,9 @@ type OrderResponse struct {
 	ID             uint
 	UserID         uint
 	OrderItems     []OrderItemResponse
-	SubtotalAmount float64
-	DiscountAmount float64
-	TotalAmount    float64
+	SubtotalAmount int64
+	DiscountAmount int64
+	TotalAmount    int64
 	CouponCode     string
 	CouponCodes    []string
 	Status         string

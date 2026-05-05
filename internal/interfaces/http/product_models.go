@@ -9,9 +9,10 @@ type productResponse struct {
 	ID          uint      `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	Price       float64   `json:"price"`
+	Price       int64     `json:"price"`
 	Stock       int       `json:"stock"`
 	Image       string    `json:"image"`
+	CategoryID  uint      `json:"category_id"`
 	Category    string    `json:"category"`
 	Status      string    `json:"status"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -27,21 +28,23 @@ type productListResponse struct {
 }
 
 type productRequest struct {
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-	Stock       int     `json:"stock"`
-	Image       string  `json:"image"`
-	Category    string  `json:"category"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Price       int64  `json:"price"`
+	Stock       int    `json:"stock"`
+	Image       string `json:"image"`
+	CategoryID  uint   `json:"category_id"`
+	Category    string `json:"category"`
 }
 
 type productUpdateRequest struct {
-	Name        *string  `json:"name"`
-	Description *string  `json:"description"`
-	Price       *float64 `json:"price"`
-	Stock       *int     `json:"stock"`
-	Image       *string  `json:"image"`
-	Category    *string  `json:"category"`
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+	Price       *int64  `json:"price"`
+	Stock       *int    `json:"stock"`
+	Image       *string `json:"image"`
+	CategoryID  *uint   `json:"category_id"`
+	Category    *string `json:"category"`
 }
 
 type updateProductStockRequest struct {
@@ -55,6 +58,7 @@ func toProductInput(req productRequest) appProduct.ProductRequest {
 		Price:       req.Price,
 		Stock:       req.Stock,
 		Image:       req.Image,
+		CategoryID:  req.CategoryID,
 		Category:    req.Category,
 	}
 }
@@ -66,6 +70,7 @@ func toProductUpdateInput(req productUpdateRequest) appProduct.ProductUpdateRequ
 		Price:       req.Price,
 		Stock:       req.Stock,
 		Image:       req.Image,
+		CategoryID:  req.CategoryID,
 		Category:    req.Category,
 	}
 }
@@ -78,6 +83,7 @@ func toProductHTTPResponse(resp appProduct.ProductResponse) productResponse {
 		Price:       resp.Price,
 		Stock:       resp.Stock,
 		Image:       resp.Image,
+		CategoryID:  resp.CategoryID,
 		Category:    resp.Category,
 		Status:      resp.Status,
 		CreatedAt:   resp.CreatedAt,

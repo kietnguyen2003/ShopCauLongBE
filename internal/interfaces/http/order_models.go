@@ -20,7 +20,7 @@ type orderItemResponse struct {
 	ID          uint      `json:"id"`
 	ProductID   uint      `json:"product_id"`
 	Name        string    `json:"name"`
-	Price       float64   `json:"price"`
+	Price       int64     `json:"price"`
 	Quantity    int       `json:"quantity"`
 	Image       string    `json:"image"`
 	Category    string    `json:"category"`
@@ -32,9 +32,9 @@ type orderResponse struct {
 	ID             uint                `json:"id"`
 	UserID         uint                `json:"user_id"`
 	OrderItems     []orderItemResponse `json:"order_items"`
-	SubtotalAmount float64             `json:"subtotal_amount"`
-	DiscountAmount float64             `json:"discount_amount"`
-	TotalAmount    float64             `json:"total_amount"`
+	SubtotalAmount int64               `json:"subtotal_amount"`
+	DiscountAmount int64               `json:"discount_amount"`
+	TotalAmount    int64               `json:"total_amount"`
 	CouponCode     string              `json:"coupon_code"`
 	CouponCodes    []string            `json:"coupon_codes"`
 	Status         string              `json:"status"`

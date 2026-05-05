@@ -15,10 +15,10 @@ type GormCoupon struct {
 	Code              string `gorm:"unique;not null"`
 	Name              string
 	Description       string
-	DiscountType      string  `gorm:"not null"`
-	DiscountValue     float64 `gorm:"not null"`
-	MinOrderAmount    float64 `gorm:"default:0"`
-	MaxDiscountAmount *float64
+	DiscountType      string `gorm:"not null"`
+	DiscountValue     int64  `gorm:"not null"`
+	MinOrderAmount    int64  `gorm:"default:0"`
+	MaxDiscountAmount *int64
 	UsageLimit        *int
 	UsedCount         int `gorm:"default:0"`
 	UsageLimitPerUser int `gorm:"default:1"`
@@ -34,11 +34,11 @@ func (GormCoupon) TableName() string {
 }
 
 type GormCouponRedemption struct {
-	ID             uint    `gorm:"primaryKey"`
-	CouponID       uint    `gorm:"not null;index"`
-	UserID         uint    `gorm:"not null;index"`
-	OrderID        uint    `gorm:"not null;index"`
-	DiscountAmount float64 `gorm:"not null"`
+	ID             uint  `gorm:"primaryKey"`
+	CouponID       uint  `gorm:"not null;index"`
+	UserID         uint  `gorm:"not null;index"`
+	OrderID        uint  `gorm:"not null;index"`
+	DiscountAmount int64 `gorm:"not null"`
 	CreatedAt      int64
 }
 

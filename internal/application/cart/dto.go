@@ -17,17 +17,17 @@ type CartItemResponse struct {
 	ProductID   uint
 	Name        string
 	Description string
-	Price       float64
+	Price       int64
 	Quantity    int
 	Image       string
-	Subtotal    float64
+	Subtotal    int64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
 
 type CartResponse struct {
 	Items       []CartItemResponse
-	TotalAmount float64
+	TotalAmount int64
 	TotalItems  int
 }
 
@@ -40,7 +40,7 @@ func toCartItemResponse(item *domainCart.CartItem, prod *domainProduct.Product) 
 		Price:       prod.Price,
 		Quantity:    item.Quantity,
 		Image:       prod.Image,
-		Subtotal:    prod.Price * float64(item.Quantity),
+		Subtotal:    prod.Price * int64(item.Quantity),
 		CreatedAt:   item.CreatedAt,
 		UpdatedAt:   item.UpdatedAt,
 	}

@@ -158,10 +158,10 @@ func (s *Service) CreateOrder(req CreateOrderRequest) (*OrderResponse, error) {
 	return &response, nil
 }
 
-func (s *Service) validateCouponsForOrder(userID uint, codes []string, subtotalAmount float64) ([]*domainCoupon.Coupon, float64, error) {
+func (s *Service) validateCouponsForOrder(userID uint, codes []string, subtotalAmount int64) ([]*domainCoupon.Coupon, int64, error) {
 	coupons := make([]*domainCoupon.Coupon, 0, len(codes))
 	seenCodes := make(map[string]struct{})
-	var totalDiscount float64
+	var totalDiscount int64
 
 	for _, code := range codes {
 		normalizedCode := domainCoupon.NormalizeCode(code)
@@ -191,7 +191,7 @@ func (s *Service) validateCouponsForOrder(userID uint, codes []string, subtotalA
 	return coupons, totalDiscount, nil
 }
 
-func (s *Service) validateCouponForOrder(userID uint, code string, subtotalAmount float64) (*domainCoupon.Coupon, float64, error) {
+func (s *Service) validateCouponForOrder(userID uint, code string, subtotalAmount int64) (*domainCoupon.Coupon, int64, error) {
 	normalizedCode := domainCoupon.NormalizeCode(code)
 	if normalizedCode == "" {
 		return nil, 0, domainCoupon.ErrCouponCodeRequired

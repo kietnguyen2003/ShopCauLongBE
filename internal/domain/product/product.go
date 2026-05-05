@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+var ErrInsufficientStock = errors.New("insufficient stock")
+
 const (
 	StatusActive   = "active"
 	StatusInactive = "inactive"
@@ -15,9 +17,10 @@ type Product struct {
 	ID          uint
 	Name        string
 	Description string
-	Price       float64
+	Price       int64
 	Stock       int
 	Image       string
+	CategoryID  uint
 	Category    string
 	Status      string
 	CreatedAt   time.Time
@@ -25,7 +28,7 @@ type Product struct {
 }
 
 // NewProduct creates a new product with validation
-func NewProduct(name, description string, price float64, stock int, image, category string) (*Product, error) {
+func NewProduct(name, description string, price int64, stock int, image string, categoryID uint, category string) (*Product, error) {
 	if name == "" {
 		return nil, errors.New("product name cannot be empty")
 	}
@@ -42,6 +45,7 @@ func NewProduct(name, description string, price float64, stock int, image, categ
 		Price:       price,
 		Stock:       stock,
 		Image:       image,
+		CategoryID:  categoryID,
 		Category:    category,
 		Status:      StatusActive,
 		CreatedAt:   time.Now(),
@@ -65,7 +69,7 @@ func (p *Product) UpdateStock(newStock int) error {
 }
 
 // UpdateDetails updates product information with validation
-func (p *Product) UpdateDetails(name, description string, price float64, stock int, image, category string) error {
+func (p *Product) UpdateDetails(name, description string, price int64, stock int, image string, categoryID uint, category string) error {
 	if name == "" {
 		return errors.New("product name cannot be empty")
 	}
@@ -81,6 +85,7 @@ func (p *Product) UpdateDetails(name, description string, price float64, stock i
 	p.Price = price
 	p.Stock = stock
 	p.Image = image
+	p.CategoryID = categoryID
 	p.Category = category
 	p.UpdatedAt = time.Now()
 	return nil
@@ -98,7 +103,7 @@ func (p *Product) DecreaseStock(quantity int) error {
 		return errors.New("quantity must be greater than 0")
 	}
 	if !p.IsAvailable(quantity) {
-		return errors.New("insufficient stock")
+		return ErrInsufficientStock
 	}
 	p.Stock -= quantity
 	p.UpdatedAt = time.Now()

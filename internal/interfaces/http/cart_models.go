@@ -23,17 +23,17 @@ type cartItemResponse struct {
 	ProductID   uint      `json:"product_id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	Price       float64   `json:"price"`
+	Price       int64     `json:"price"`
 	Quantity    int       `json:"quantity"`
 	Image       string    `json:"image"`
-	Subtotal    float64   `json:"subtotal"`
+	Subtotal    int64     `json:"subtotal"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type cartResponse struct {
 	Items       []cartItemResponse `json:"items"`
-	TotalAmount float64            `json:"total_amount"`
+	TotalAmount int64              `json:"total_amount"`
 	TotalItems  int                `json:"total_items"`
 }
 

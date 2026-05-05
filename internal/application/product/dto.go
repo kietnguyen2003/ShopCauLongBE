@@ -9,9 +9,10 @@ type ProductResponse struct {
 	ID          uint
 	Name        string
 	Description string
-	Price       float64
+	Price       int64
 	Stock       int
 	Image       string
+	CategoryID  uint
 	Category    string
 	Status      string
 	CreatedAt   time.Time
@@ -29,29 +30,32 @@ type ProductListResponse struct {
 type ProductRequest struct {
 	Name        string
 	Description string
-	Price       float64
+	Price       int64
 	Stock       int
 	Image       string
+	CategoryID  uint
 	Category    string
 }
 
 type ProductUpdateRequest struct {
 	Name        *string
 	Description *string
-	Price       *float64
+	Price       *int64
 	Stock       *int
 	Image       *string
+	CategoryID  *uint
 	Category    *string
 }
 
 type ProductQuery struct {
-	Page     int
-	Limit    int
-	Search   string
-	Category string
-	MinPrice *float64
-	MaxPrice *float64
-	Sort     string
+	Page       int
+	Limit      int
+	Search     string
+	CategoryID uint
+	Category   string
+	MinPrice   *int64
+	MaxPrice   *int64
+	Sort       string
 }
 
 func toProductResponse(prod *domainProduct.Product) ProductResponse {
@@ -62,6 +66,7 @@ func toProductResponse(prod *domainProduct.Product) ProductResponse {
 		Price:       prod.Price,
 		Stock:       prod.Stock,
 		Image:       prod.Image,
+		CategoryID:  prod.CategoryID,
 		Category:    prod.Category,
 		Status:      prod.Status,
 		CreatedAt:   prod.CreatedAt,

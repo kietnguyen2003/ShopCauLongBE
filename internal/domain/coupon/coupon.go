@@ -35,9 +35,9 @@ type Coupon struct {
 	Name              string
 	Description       string
 	DiscountType      string
-	DiscountValue     float64
-	MinOrderAmount    float64
-	MaxDiscountAmount *float64
+	DiscountValue     int64
+	MinOrderAmount    int64
+	MaxDiscountAmount *int64
 	UsageLimit        *int
 	UsedCount         int
 	UsageLimitPerUser int
@@ -53,11 +53,11 @@ type Redemption struct {
 	CouponID       uint
 	UserID         uint
 	OrderID        uint
-	DiscountAmount float64
+	DiscountAmount int64
 	CreatedAt      time.Time
 }
 
-func NewCoupon(code, name, description, discountType string, discountValue, minOrderAmount float64, maxDiscountAmount *float64, usageLimit *int, usageLimitPerUser int, startAt, endAt *time.Time, isActive bool) (*Coupon, error) {
+func NewCoupon(code, name, description, discountType string, discountValue, minOrderAmount int64, maxDiscountAmount *int64, usageLimit *int, usageLimitPerUser int, startAt, endAt *time.Time, isActive bool) (*Coupon, error) {
 	coupon := &Coupon{
 		Code:              NormalizeCode(code),
 		Name:              name,
@@ -120,7 +120,7 @@ func (c *Coupon) ValidateDefinition() error {
 	return nil
 }
 
-func (c *Coupon) ValidateForUse(subtotalAmount float64, userUsedCount int, now time.Time) error {
+func (c *Coupon) ValidateForUse(subtotalAmount int64, userUsedCount int, now time.Time) error {
 	if !c.IsActive {
 		return ErrCouponInactive
 	}
@@ -143,8 +143,8 @@ func (c *Coupon) ValidateForUse(subtotalAmount float64, userUsedCount int, now t
 	return nil
 }
 
-func (c *Coupon) CalculateDiscount(subtotalAmount float64) float64 {
-	var discount float64
+func (c *Coupon) CalculateDiscount(subtotalAmount int64) int64 {
+	var discount int64
 	switch c.DiscountType {
 	case DiscountTypePercentage:
 		discount = subtotalAmount * c.DiscountValue / 100

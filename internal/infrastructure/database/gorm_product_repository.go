@@ -13,9 +13,10 @@ type GormProduct struct {
 	ID          uint   `gorm:"primaryKey"`
 	Name        string `gorm:"not null"`
 	Description string
-	Price       float64 `gorm:"not null"`
-	Stock       int     `gorm:"default:0"`
+	Price       int64 `gorm:"not null"`
+	Stock       int   `gorm:"default:0"`
 	Image       string
+	CategoryID  *uint `gorm:"index"`
 	Category    string
 	Status      string `gorm:"default:active"`
 	CreatedAt   int64
@@ -43,6 +44,7 @@ func (r *GormProductRepository) Create(prod *product.Product) error {
 		Price:       prod.Price,
 		Stock:       prod.Stock,
 		Image:       prod.Image,
+		CategoryID:  uintPtrOrNil(prod.CategoryID),
 		Category:    prod.Category,
 		Status:      productStatus(prod.Status),
 		CreatedAt:   prod.CreatedAt.Unix(),
@@ -94,6 +96,9 @@ func (r *GormProductRepository) GetWithQuery(query appProduct.ProductQuery) ([]*
 	}
 	if query.Category != "" {
 		dbQuery = dbQuery.Where("category = ?", query.Category)
+	}
+	if query.CategoryID != 0 {
+		dbQuery = dbQuery.Where("category_id = ?", query.CategoryID)
 	}
 	if query.MinPrice != nil {
 		dbQuery = dbQuery.Where("price >= ?", *query.MinPrice)
@@ -160,6 +165,7 @@ func (r *GormProductRepository) Update(prod *product.Product) error {
 		Price:       prod.Price,
 		Stock:       prod.Stock,
 		Image:       prod.Image,
+		CategoryID:  uintPtrOrNil(prod.CategoryID),
 		Category:    prod.Category,
 		Status:      productStatus(prod.Status),
 		CreatedAt:   prod.CreatedAt.Unix(),
@@ -188,11 +194,26 @@ func (r *GormProductRepository) toDomainProduct(gormProduct *GormProduct) *produ
 		Price:       gormProduct.Price,
 		Stock:       gormProduct.Stock,
 		Image:       gormProduct.Image,
+		CategoryID:  uintFromPtr(gormProduct.CategoryID),
 		Category:    gormProduct.Category,
 		Status:      productStatus(gormProduct.Status),
 		CreatedAt:   timeFromUnix(gormProduct.CreatedAt),
 		UpdatedAt:   timeFromUnix(gormProduct.UpdatedAt),
 	}
+}
+
+func uintPtrOrNil(value uint) *uint {
+	if value == 0 {
+		return nil
+	}
+	return &value
+}
+
+func uintFromPtr(value *uint) uint {
+	if value == nil {
+		return 0
+	}
+	return *value
 }
 
 func productStatus(status string) string {

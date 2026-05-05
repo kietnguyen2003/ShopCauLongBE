@@ -11,9 +11,9 @@ type CouponRequest struct {
 	Name              string
 	Description       string
 	DiscountType      string
-	DiscountValue     float64
-	MinOrderAmount    float64
-	MaxDiscountAmount *float64
+	DiscountValue     int64
+	MinOrderAmount    int64
+	MaxDiscountAmount *int64
 	UsageLimit        *int
 	UsageLimitPerUser int
 	StartAt           *time.Time
@@ -26,9 +26,9 @@ type CouponUpdateRequest struct {
 	Name              *string
 	Description       *string
 	DiscountType      *string
-	DiscountValue     *float64
-	MinOrderAmount    *float64
-	MaxDiscountAmount *float64
+	DiscountValue     *int64
+	MinOrderAmount    *int64
+	MaxDiscountAmount *int64
 	UsageLimit        *int
 	UsageLimitPerUser *int
 	StartAt           *time.Time
@@ -60,9 +60,9 @@ type CouponResponse struct {
 	Name              string
 	Description       string
 	DiscountType      string
-	DiscountValue     float64
-	MinOrderAmount    float64
-	MaxDiscountAmount *float64
+	DiscountValue     int64
+	MinOrderAmount    int64
+	MaxDiscountAmount *int64
 	UsageLimit        *int
 	UsedCount         int
 	UsageLimitPerUser int
@@ -85,10 +85,10 @@ type ValidateCouponResponse struct {
 	CouponCode     string
 	CouponCodes    []string
 	DiscountType   string
-	DiscountValue  float64
-	SubtotalAmount float64
-	DiscountAmount float64
-	TotalAmount    float64
+	DiscountValue  int64
+	SubtotalAmount int64
+	DiscountAmount int64
+	TotalAmount    int64
 }
 
 func toCouponResponse(coupon *domainCoupon.Coupon) CouponResponse {

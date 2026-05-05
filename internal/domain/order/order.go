@@ -28,7 +28,7 @@ const (
 // ProductSnapshot captures product data at purchase time.
 type ProductSnapshot struct {
 	Name        string
-	Price       float64
+	Price       int64
 	Image       string
 	Category    string
 	Description string
@@ -49,9 +49,9 @@ type Order struct {
 	ID             uint
 	UserID         uint
 	OrderItems     []OrderItem
-	SubtotalAmount float64
-	DiscountAmount float64
-	TotalAmount    float64
+	SubtotalAmount int64
+	DiscountAmount int64
+	TotalAmount    int64
 	CouponID       *uint
 	CouponCode     string
 	CouponCodes    []string
@@ -98,7 +98,7 @@ func NewOrder(userID uint, customerName, phone, address, email string) (*Order, 
 	}, nil
 }
 
-func NewProductSnapshot(name string, price float64, image, category, description string) (ProductSnapshot, error) {
+func NewProductSnapshot(name string, price int64, image, category, description string) (ProductSnapshot, error) {
 	if name == "" {
 		return ProductSnapshot{}, ErrProductNameRequired
 	}
@@ -170,15 +170,15 @@ func (o *Order) UpdateStatus(status OrderStatus) error {
 
 // calculateTotal calculates the total amount of the order
 func (o *Order) calculateTotal() {
-	total := 0.0
+	var total int64
 	for _, item := range o.OrderItems {
-		total += item.ProductSnapshot.Price * float64(item.Quantity)
+		total += item.ProductSnapshot.Price * int64(item.Quantity)
 	}
 	o.SubtotalAmount = total
 	o.TotalAmount = o.SubtotalAmount - o.DiscountAmount
 }
 
-func (o *Order) ApplyDiscount(couponID *uint, couponCodes []string, discountAmount float64) {
+func (o *Order) ApplyDiscount(couponID *uint, couponCodes []string, discountAmount int64) {
 	if discountAmount < 0 {
 		discountAmount = 0
 	}
