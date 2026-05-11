@@ -60,6 +60,17 @@ HTTP handlers -> Application services -> Domain entities
 Application ports <- Infrastructure repositories
 ```
 
+### Cache architecture
+
+Redis is used as the backend cache/session store for authentication-sensitive flows:
+
+- Login rate limiting by username and IP.
+- Refresh token lookup and invalidation.
+- Active user session lookup from JWT middleware.
+- Session cleanup on logout.
+
+![Cache Diagram](snapshot/cache-diagram.png)
+
 ## 5. Database Design
 
 Main tables:
@@ -128,6 +139,8 @@ Database schema creation starts with GORM `AutoMigrate`, then applies PostgreSQL
 AutoMigrate(...)
 -> ApplyDatabaseHardening(...)
 ```
+
+![Migration Flow](snapshot/migration.png)
 
 The hardening migration lives in:
 
@@ -596,7 +609,7 @@ Demo flows you can test:
 
 ### UI screenshots
 
-The `snapshot/` folder contains UI screenshots named by screen/function.
+The `snapshot/` folder contains architecture diagrams and UI screenshots named by screen/function. The cache and migration diagrams are shown in the architecture and migration sections above.
 
 #### Trang chu
 
