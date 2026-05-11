@@ -27,6 +27,15 @@ type resetPasswordRequest struct {
 	NewPassword string `json:"new_password"`
 }
 
+type refreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token"`
+	UserID       uint   `json:"user_id"`
+}
+
+type logoutRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
 type userResponse struct {
 	ID       uint   `json:"id"`
 	Username string `json:"username"`
@@ -35,8 +44,9 @@ type userResponse struct {
 }
 
 type authResponse struct {
-	Token string       `json:"token"`
-	User  userResponse `json:"user"`
+	Token        string       `json:"token"`
+	RefreshToken string       `json:"refresh_token"`
+	User         userResponse `json:"user"`
 }
 
 func toRegisterInput(req registerRequest) appAuth.RegisterRequest {
@@ -47,10 +57,11 @@ func toRegisterInput(req registerRequest) appAuth.RegisterRequest {
 	}
 }
 
-func toLoginInput(req loginRequest) appAuth.LoginRequest {
+func toLoginInput(req loginRequest, ip string) appAuth.LoginRequest {
 	return appAuth.LoginRequest{
 		Username: req.Username,
 		Password: req.Password,
+		IP:       ip,
 	}
 }
 
@@ -77,7 +88,8 @@ func toResetPasswordInput(req resetPasswordRequest) appAuth.ResetPasswordRequest
 
 func toAuthHTTPResponse(resp *appAuth.AuthResponse) authResponse {
 	return authResponse{
-		Token: resp.Token,
+		Token:        resp.Token,
+		RefreshToken: resp.RefreshToken,
 		User: userResponse{
 			ID:       resp.User.ID,
 			Username: resp.User.Username,

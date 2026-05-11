@@ -52,6 +52,7 @@
             "msg": "Register successfully",
             "data": {
               "token": "<jwt_token>",
+              "refresh_token": "<refresh_token>",
               "user": {
                 "id": 1,
                 "username": "user01",
@@ -89,6 +90,7 @@
             "msg": "Login successfully",
             "data": {
               "token": "<jwt_token>",
+              "refresh_token": "<refresh_token>",
               "user": {
                 "id": 1,
                 "username": "user01",
@@ -99,7 +101,7 @@
           }
         },
         "error": {
-          "status": "400 or 401",
+          "status": "400, 401 or 429",
           "body": {
             "code": 401,
             "msg": "Error message",
@@ -129,6 +131,7 @@
             "msg": "Admin login successfully",
             "data": {
               "token": "<jwt_token>",
+              "refresh_token": "<refresh_token>",
               "user": {
                 "id": 1,
                 "username": "admin",
@@ -139,7 +142,7 @@
           }
         },
         "error": {
-          "status": "400 or 401",
+          "status": "400, 401 or 429",
           "body": {
             "code": 401,
             "msg": "Error message",
@@ -185,9 +188,12 @@
       "method": "POST",
       "path": "/auth/logout",
       "auth_required": true,
-      "request_body": null,
+      "request_body": {
+        "refresh_token": "<refresh_token>"
+      },
       "notes": [
-        "JWT hien tai la stateless token, frontend nen xoa token o localStorage/cookie sau khi logout."
+        "Neu gui refresh_token, backend se xoa refresh token do khoi Redis.",
+        "JWT access token hien tai van la stateless token, frontend nen xoa token o localStorage/cookie sau khi logout."
       ],
       "responses": {
         "success": {
@@ -213,10 +219,13 @@
       "name": "Cap access token moi",
       "method": "POST",
       "path": "/auth/refresh-token",
-      "auth_required": true,
-      "request_body": null,
+      "auth_required": false,
+      "request_body": {
+        "refresh_token": "<refresh_token>"
+      },
       "notes": [
-        "Dung token hien tai con hop le de cap token moi."
+        "Dung refresh_token dang luu trong Redis de cap cap token moi.",
+        "Refresh token duoc rotate sau moi lan refresh."
       ],
       "responses": {
         "success": {
@@ -226,6 +235,7 @@
             "msg": "Refresh token successfully",
             "data": {
               "token": "<new_jwt_token>",
+              "refresh_token": "<new_refresh_token>",
               "user": {
                 "id": 1,
                 "username": "user01",

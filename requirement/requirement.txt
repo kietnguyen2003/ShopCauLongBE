@@ -1,0 +1,44 @@
+Redis Usage Ideas For Authentication
+
+1. Login Rate Limiting
+Purpose:
+- Prevent brute force attack
+- Prevent spam login requests
+
+Redis Keys:
+- auth:login:ip:1.2.3.4
+- auth:login:user:kiet
+
+Flow:
+- User login failed -> INCR key
+- Set EXPIRE 300 seconds
+- If attempts > 5 -> block login temporarily
+
+Useful Redis Commands:
+- INCR
+- EXPIRE
+- TTL
+
+2. Session Cache
+Purpose:
+- Reduce repeated DB calls
+
+Redis Key:
+- auth:session:user:1
+
+Value:
+- username
+- role
+- permissions
+
+Flow:
+- Login -> cache session
+- Middleware -> read session cache
+
+Useful Redis Commands:
+- SET
+- GET
+- EXPIRE
+
+--------------------------------------------------
+

@@ -5,6 +5,7 @@ import domainAuth "kafka-order-demo/backend/internal/domain/auth"
 type LoginRequest struct {
 	Username string
 	Password string
+	IP       string
 }
 
 type RegisterRequest struct {
@@ -35,9 +36,18 @@ type UserResponse struct {
 	IsAdmin  bool
 }
 
+type Session struct {
+	UserID      uint     `json:"user_id"`
+	Username    string   `json:"username"`
+	Role        string   `json:"role"`
+	Permissions []string `json:"permissions"`
+	IsAdmin     bool     `json:"is_admin"`
+}
+
 type AuthResponse struct {
-	Token string
-	User  UserResponse `json:"user"`
+	Token        string
+	RefreshToken string
+	User         UserResponse `json:"user"`
 }
 
 func toUserResponse(user *domainAuth.User) UserResponse {
