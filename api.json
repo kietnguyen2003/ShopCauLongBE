@@ -389,6 +389,15 @@
         }
       },
       "example_url": "/api/products?page=1&limit=12&search=yonex&category=racket&min_price=500000&max_price=3000000&sort=price_asc",
+      "cache": {
+        "status": "not_implemented",
+        "planned_key_examples": [
+          "products:list:page:1:limit:12",
+          "products:list:page:1:limit:12:sort:price_asc"
+        ],
+        "planned_ttl": "1m to 5m",
+        "strategy": "Cache-aside pattern; planned for Phase 2"
+      },
       "responses": {
         "success": {
           "status": 200,
@@ -437,6 +446,17 @@
         "id": "Product ID"
       },
       "example_url": "/api/products/1",
+      "cache": {
+        "enabled": true,
+        "key": "product:detail:<id>",
+        "ttl": "10m",
+        "strategy": "Cache-aside pattern: read Redis first, cache miss queries PostgreSQL, then saves JSON response to Redis",
+        "invalidation": [
+          "DELETE product:detail:<id> when product is updated",
+          "DELETE product:detail:<id> when product is deleted",
+          "DELETE product:detail:<id> when product stock is updated"
+        ]
+      },
       "responses": {
         "success": {
           "status": 200,
@@ -505,6 +525,17 @@
         "category": "Ten danh muc cua san pham"
       },
       "example_url": "/api/products/category/clothing",
+      "cache": {
+        "enabled": true,
+        "key": "products:category:<category>",
+        "ttl": "10m",
+        "strategy": "Cache-aside pattern: read Redis first, cache miss queries PostgreSQL, then saves JSON response to Redis",
+        "invalidation": [
+          "DELETE products:category:<category> when product in that category is updated",
+          "DELETE products:category:<category> when product in that category is deleted",
+          "DELETE products:category:<old_category> and products:category:<new_category> when product category changes"
+        ]
+      },
       "responses": {
         "success": {
           "status": 200,
@@ -578,7 +609,8 @@
       },
       "notes": [
         "Co the update rieng le tung field.",
-        "Uu tien dung category_id de rang buoc voi bang categories. Field category van duoc ho tro de tuong thich client cu."
+        "Uu tien dung category_id de rang buoc voi bang categories. Field category van duoc ho tro de tuong thich client cu.",
+        "Cache invalidation: xoa product:detail:<id> va products:category:<category> lien quan."
       ],
       "responses": {
         "success": {
@@ -612,7 +644,8 @@
         "id": "Product ID"
       },
       "notes": [
-        "Soft delete: set product status thanh inactive."
+        "Soft delete: set product status thanh inactive.",
+        "Cache invalidation: xoa product:detail:<id> va products:category:<category> lien quan."
       ],
       "responses": {
         "success": {
@@ -643,6 +676,9 @@
       "request_body": {
         "stock": 25
       },
+      "notes": [
+        "Cache invalidation: xoa product:detail:<id> va products:category:<category> lien quan."
+      ],
       "responses": {
         "success": {
           "status": 200,
@@ -668,6 +704,17 @@
       "method": "GET",
       "path": "/api/categories",
       "auth_required": false,
+      "cache": {
+        "enabled": true,
+        "key": "categories:all",
+        "ttl": "45m",
+        "strategy": "Cache-aside pattern: read Redis first, cache miss queries PostgreSQL, then saves JSON response to Redis",
+        "invalidation": [
+          "DELETE categories:all when category is created",
+          "DELETE categories:all when category is updated",
+          "DELETE categories:all when category is deleted"
+        ]
+      },
       "responses": {
         "success": {
           "status": 200,
@@ -732,6 +779,9 @@
         "description": "Giay cau long",
         "image": "https://example.com/category-shoes.png"
       },
+      "notes": [
+        "Cache invalidation: xoa categories:all."
+      ],
       "responses": {
         "success": {
           "status": 201,
@@ -764,7 +814,8 @@
         "description": "Mo ta moi"
       },
       "notes": [
-        "Co the update rieng le tung field."
+        "Co the update rieng le tung field.",
+        "Cache invalidation: xoa categories:all."
       ],
       "responses": {
         "success": {
@@ -795,7 +846,8 @@
       "auth_required": true,
       "admin_required": true,
       "notes": [
-        "Soft delete: set category status thanh inactive."
+        "Soft delete: set category status thanh inactive.",
+        "Cache invalidation: xoa categories:all."
       ],
       "responses": {
         "success": {

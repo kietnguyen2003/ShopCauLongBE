@@ -39,6 +39,7 @@ type UserResponse struct {
 type Session struct {
 	UserID      uint     `json:"user_id"`
 	Username    string   `json:"username"`
+	Email       string   `json:"email"`
 	Role        string   `json:"role"`
 	Permissions []string `json:"permissions"`
 	IsAdmin     bool     `json:"is_admin"`

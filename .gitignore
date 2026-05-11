@@ -90,3 +90,4 @@ config/production.yaml
 
 scripts/*
 .gitignore
+requirement/*

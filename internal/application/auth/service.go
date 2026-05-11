@@ -122,14 +122,18 @@ func (s *Service) AdminLogin(ctx context.Context, req LoginRequest) (*AuthRespon
 	return s.issueAuthTokens(ctx, user)
 }
 
-func (s *Service) GetMe(userID uint) (*UserResponse, error) {
-	user, err := s.userRepo.GetByID(userID)
+func (s *Service) GetMe(ctx context.Context, userID uint) (*UserResponse, error) {
+	session, err := s.sessionStore.GetSession(ctx, userID)
 	if err != nil {
-		return nil, errors.New("user not found")
+		return nil, errors.New("session not found")
 	}
 
-	response := toUserResponse(user)
-	return &response, nil
+	return &UserResponse{
+		ID:       session.UserID,
+		Username: session.Username,
+		Email:    session.Email,
+		IsAdmin:  session.IsAdmin,
+	}, nil
 }
 
 func (s *Service) RefreshToken(ctx context.Context, refreshToken string, userIDReq uint) (*AuthResponse, error) {
@@ -248,6 +252,7 @@ func (s *Service) issueAuthTokens(ctx context.Context, user *domainAuth.User) (*
 	if err := s.sessionStore.StoreSession(ctx, Session{
 		UserID:      user.ID,
 		Username:    user.Username,
+		Email:       user.Email,
 		Role:        userRole(user.IsAdmin),
 		Permissions: []string{},
 		IsAdmin:     user.IsAdmin,

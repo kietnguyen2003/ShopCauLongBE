@@ -50,7 +50,7 @@ func (h *ProductHandler) GetProductByID(c *gin.Context) {
 		return
 	}
 
-	product, err := h.productService.GetProduct(uint(id))
+	product, err := h.productService.GetProduct(c.Request.Context(), uint(id))
 	if err != nil {
 		errorResponse(c, http.StatusNotFound, "Product not found")
 		return
@@ -74,7 +74,7 @@ func (h *ProductHandler) SearchProducts(c *gin.Context) {
 func (h *ProductHandler) GetProductsByCategory(c *gin.Context) {
 	category := c.Param("category")
 
-	products, err := h.productService.GetProductsByCategory(category)
+	products, err := h.productService.GetProductsByCategory(c.Request.Context(), category)
 	if err != nil {
 		errorResponse(c, http.StatusInternalServerError, err.Error())
 		return

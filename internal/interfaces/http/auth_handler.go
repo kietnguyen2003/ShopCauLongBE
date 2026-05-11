@@ -86,7 +86,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.authService.GetMe(userID.(uint))
+	resp, err := h.authService.GetMe(c.Request.Context(), userID.(uint))
 	if err != nil {
 		errorResponse(c, http.StatusNotFound, err.Error())
 		return
@@ -214,6 +214,7 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 
 		c.Set("user_id", session.UserID)
 		c.Set("username", session.Username)
+		c.Set("email", session.Email)
 		c.Set("role", session.Role)
 		c.Set("permissions", session.Permissions)
 		c.Set("is_admin", session.IsAdmin)
