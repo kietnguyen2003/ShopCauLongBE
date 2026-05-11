@@ -35,6 +35,24 @@ services:
       - backend-network
     restart: unless-stopped
 
+  # Redis - cache storage
+  redis:
+    image: redis:7-alpine
+    container_name: order-backend-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend-network
+    restart: unless-stopped
+
   # MinIO - S3-compatible object storage
   minio:
     image: minio/minio:latest
@@ -56,6 +74,8 @@ volumes:
   postgres_data:
     driver: local
   minio_data:
+    driver: local
+  redis_data:
     driver: local
 
 networks:

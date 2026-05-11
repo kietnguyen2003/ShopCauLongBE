@@ -1,22 +1,33 @@
 package product
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
-	domainProduct "kafka-order-demo/backend/internal/domain/product"
+	"fmt"
 	"math"
+	"strings"
+	"time"
+
+	domainProduct "kafka-order-demo/backend/internal/domain/product"
 )
 
 var ErrCategoryNotFound = errors.New("category not found")
 
+const productDetailCacheTTL = 10 * time.Minute
+const categoryProductsCacheTTL = 10 * time.Minute
+
 type Service struct {
 	productRepo  ProductRepository
 	categoryRepo CategoryRepository
+	cache        CacheStore
 }
 
-func NewService(productRepo ProductRepository, categoryRepo CategoryRepository) *Service {
+func NewService(productRepo ProductRepository, categoryRepo CategoryRepository, cache CacheStore) *Service {
 	return &Service{
 		productRepo:  productRepo,
 		categoryRepo: categoryRepo,
+		cache:        cache,
 	}
 }
 
@@ -59,23 +70,36 @@ func (s *Service) GetProductsWithQuery(query ProductQuery) (*ProductListResponse
 	}, nil
 }
 
-func (s *Service) GetProduct(id uint) (*ProductResponse, error) {
+func (s *Service) GetProduct(ctx context.Context, id uint) (*ProductResponse, error) {
+	cacheKey := productDetailCacheKey(id)
+	if cached, ok := getCached[ProductResponse](ctx, s.cache, cacheKey); ok {
+		return &cached, nil
+	}
+
 	prod, err := s.productRepo.GetByID(id)
 	if err != nil {
 		return nil, err
 	}
 
 	response := toProductResponse(prod)
+	setCached(ctx, s.cache, cacheKey, response, productDetailCacheTTL)
 	return &response, nil
 }
 
-func (s *Service) GetProductsByCategory(category string) ([]ProductResponse, error) {
+func (s *Service) GetProductsByCategory(ctx context.Context, category string) ([]ProductResponse, error) {
+	cacheKey := categoryProductsCacheKey(category)
+	if cached, ok := getCached[[]ProductResponse](ctx, s.cache, cacheKey); ok {
+		return cached, nil
+	}
+
 	products, err := s.productRepo.GetByCategory(category)
 	if err != nil {
 		return nil, err
 	}
 
-	return toProductResponses(products), nil
+	responses := toProductResponses(products)
+	setCached(ctx, s.cache, cacheKey, responses, categoryProductsCacheTTL)
+	return responses, nil
 }
 
 func (s *Service) SearchProducts(keyword string) ([]ProductResponse, error) {
@@ -113,6 +137,7 @@ func (s *Service) UpdateProduct(id uint, req ProductUpdateRequest) (*ProductResp
 		return nil, err
 	}
 
+	oldCategory := prod.Category
 	name := prod.Name
 	description := prod.Description
 	price := prod.Price
@@ -157,16 +182,23 @@ func (s *Service) UpdateProduct(id uint, req ProductUpdateRequest) (*ProductResp
 		return nil, err
 	}
 
+	s.invalidateProductCache(id, oldCategory, category)
 	response := toProductResponse(prod)
 	return &response, nil
 }
 
 func (s *Service) DeleteProduct(id uint) error {
-	if _, err := s.productRepo.GetByID(id); err != nil {
+	prod, err := s.productRepo.GetByID(id)
+	if err != nil {
 		return err
 	}
 
-	return s.productRepo.Delete(id)
+	if err := s.productRepo.Delete(id); err != nil {
+		return err
+	}
+
+	s.invalidateProductCache(id, prod.Category)
+	return nil
 }
 
 func (s *Service) UpdateProductStock(id uint, stock int) error {
@@ -180,7 +212,12 @@ func (s *Service) UpdateProductStock(id uint, stock int) error {
 		return err
 	}
 
-	return s.productRepo.Update(prod)
+	if err := s.productRepo.Update(prod); err != nil {
+		return err
+	}
+
+	s.invalidateProductCache(id, prod.Category)
+	return nil
 }
 
 func (s *Service) resolveCategory(categoryID uint, categoryName string) (uint, string, error) {
@@ -202,4 +239,61 @@ func (s *Service) resolveCategory(categoryID uint, categoryName string) (uint, s
 	}
 
 	return category.ID, category.Name, nil
+}
+
+func (s *Service) invalidateProductCache(id uint, categories ...string) {
+	if s.cache == nil {
+		return
+	}
+
+	keys := []string{productDetailCacheKey(id)}
+	seen := map[string]bool{}
+	for _, category := range categories {
+		cacheKey := categoryProductsCacheKey(category)
+		if category == "" || seen[cacheKey] {
+			continue
+		}
+		seen[cacheKey] = true
+		keys = append(keys, cacheKey)
+	}
+	_ = s.cache.Delete(context.Background(), keys...)
+}
+
+func productDetailCacheKey(id uint) string {
+	return fmt.Sprintf("product:detail:%d", id)
+}
+
+func categoryProductsCacheKey(category string) string {
+	return "products:category:" + strings.ToLower(strings.TrimSpace(category))
+}
+
+func getCached[T any](ctx context.Context, cache CacheStore, key string) (T, bool) {
+	var value T
+	if cache == nil {
+		return value, false
+	}
+
+	cached, err := cache.Get(ctx, key)
+	if err != nil {
+		return value, false
+	}
+
+	if err := json.Unmarshal([]byte(cached), &value); err != nil {
+		return value, false
+	}
+
+	return value, true
+}
+
+func setCached(ctx context.Context, cache CacheStore, key string, value any, ttl time.Duration) {
+	if cache == nil {
+		return
+	}
+
+	data, err := json.Marshal(value)
+	if err != nil {
+		return
+	}
+
+	_ = cache.Set(ctx, key, data, ttl)
 }

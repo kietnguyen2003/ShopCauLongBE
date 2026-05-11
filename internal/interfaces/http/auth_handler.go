@@ -1,7 +1,8 @@
 package http
 
 import (
-	"fmt"
+	"errors"
+	"io"
 	"net/http"
 	"strings"
 
@@ -29,7 +30,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.authService.Register(toRegisterInput(req))
+	resp, err := h.authService.Register(c.Request.Context(), toRegisterInput(req))
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, err.Error())
 		return
@@ -45,8 +46,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.authService.Login(toLoginInput(req))
+	resp, err := h.authService.Login(c.Request.Context(), toLoginInput(req, c.ClientIP()))
 	if err != nil {
+		if errors.Is(err, appAuth.ErrTooManyLoginAttempts) {
+			errorResponse(c, http.StatusTooManyRequests, err.Error())
+			return
+		}
 		errorResponse(c, http.StatusUnauthorized, err.Error())
 		return
 	}
@@ -60,10 +65,13 @@ func (h *AuthHandler) AdminLogin(c *gin.Context) {
 		errorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	fmt.Println("Request body:", req)
 
-	resp, err := h.authService.AdminLogin(toLoginInput(req))
+	resp, err := h.authService.AdminLogin(c.Request.Context(), toLoginInput(req, c.ClientIP()))
 	if err != nil {
+		if errors.Is(err, appAuth.ErrTooManyLoginAttempts) {
+			errorResponse(c, http.StatusTooManyRequests, err.Error())
+			return
+		}
 		errorResponse(c, http.StatusUnauthorized, err.Error())
 		return
 	}
@@ -78,7 +86,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.authService.GetMe(userID.(uint))
+	resp, err := h.authService.GetMe(c.Request.Context(), userID.(uint))
 	if err != nil {
 		errorResponse(c, http.StatusNotFound, err.Error())
 		return
@@ -88,19 +96,34 @@ func (h *AuthHandler) Me(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
+	var req logoutRequest
+	if err := c.ShouldBindJSON(&req); err != nil && !errors.Is(err, io.EOF) {
+		errorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.authService.Logout(c.Request.Context(), req.RefreshToken); err != nil {
+		errorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	successResponse(c, http.StatusOK, "Logout successfully", nil)
 }
 
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		errorResponse(c, http.StatusUnauthorized, "User not authenticated")
+	var req refreshTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	if req.RefreshToken == "" {
+		errorResponse(c, http.StatusBadRequest, "refresh_token is required")
 		return
 	}
 
-	resp, err := h.authService.RefreshToken(userID.(uint))
+	resp, err := h.authService.RefreshToken(c.Request.Context(), req.RefreshToken, req.UserID)
 	if err != nil {
-		errorResponse(c, http.StatusBadRequest, err.Error())
+		errorResponse(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
@@ -182,8 +205,19 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("user_id", claims.UserID)
-		c.Set("is_admin", claims.IsAdmin)
+		session, err := h.authService.GetSession(c.Request.Context(), claims.UserID)
+		if err != nil {
+			errorResponse(c, http.StatusUnauthorized, "Invalid session")
+			c.Abort()
+			return
+		}
+
+		c.Set("user_id", session.UserID)
+		c.Set("username", session.Username)
+		c.Set("email", session.Email)
+		c.Set("role", session.Role)
+		c.Set("permissions", session.Permissions)
+		c.Set("is_admin", session.IsAdmin)
 
 		c.Next()
 	}

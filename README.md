@@ -43,10 +43,11 @@ The current checkout flow is cart-based: users add products to cart, choose an a
 - HTTP framework: Gin
 - Database: PostgreSQL
 - ORM: GORM
+- Cache: Redis
 - Authentication: JWT
 - Password hashing: bcrypt
 - Object storage: MinIO
-- Local database tooling: Docker Compose, PostgreSQL 15, pgAdmin
+- Local tooling: Docker Compose, PostgreSQL 15, pgAdmin, Redis
 
 ## 4. System Architecture
 
@@ -58,6 +59,17 @@ Dependency direction:
 HTTP handlers -> Application services -> Domain entities
 Application ports <- Infrastructure repositories
 ```
+
+### Cache architecture
+
+Redis is used as the backend cache/session store for authentication-sensitive flows:
+
+- Login rate limiting by username and IP.
+- Refresh token lookup and invalidation.
+- Active user session lookup from JWT middleware.
+- Session cleanup on logout.
+
+![Cache Diagram](snapshot/cache-diagram.png)
 
 ## 5. Database Design
 
@@ -128,6 +140,8 @@ AutoMigrate(...)
 -> ApplyDatabaseHardening(...)
 ```
 
+![Migration Flow](snapshot/migration.png)
+
 The hardening migration lives in:
 
 ```text
@@ -188,7 +202,7 @@ Detailed examples are maintained in `api.json`.
 | POST | `/auth/admin-login` | No | Admin login |
 | GET | `/auth/me` | Yes | Current user |
 | POST | `/auth/logout` | Yes | Logout |
-| POST | `/auth/refresh-token` | Yes | Refresh token |
+| POST | `/auth/refresh-token` | No | Refresh access token |
 | PUT | `/auth/change-password` | Yes | Change password |
 | POST | `/auth/forgot-password` | No | Generate reset token |
 | POST | `/auth/reset-password` | No | Reset password |
@@ -257,16 +271,19 @@ Detailed examples are maintained in `api.json`.
 ## 8. Authentication Flow
 
 1. User registers via `POST /auth/register`, or logs in via `POST /auth/login`.
-2. Backend returns JWT token and user info.
-3. Client sends token on protected routes:
+2. Backend returns JWT access token, refresh token, and user info.
+3. Client stores `refresh_token` securely and sends access token on protected routes:
 
 ```http
 Authorization: Bearer <token>
 ```
 
 4. Middleware validates JWT and stores `user_id` and `is_admin` in Gin context.
-5. Admin routes additionally require `is_admin=true`.
-6. WebSocket notification clients may also pass the same JWT as `?token=<token>` when connecting to `/api/notifications/ws`.
+5. Redis tracks failed login attempts by IP and username for 5 minutes. More than 5 failed attempts returns `429`.
+6. Login caches `auth:session:user:<id>` in Redis. Middleware reads this session cache before allowing protected routes.
+7. When the access token expires, call `POST /auth/refresh-token` with `refresh_token` in the JSON body. The backend validates it in Redis and returns a new token pair.
+8. Admin routes additionally require `is_admin=true`.
+9. WebSocket notification clients may also pass the same JWT as `?token=<token>` when connecting to `/api/notifications/ws`.
 
 Seed admin:
 
@@ -457,6 +474,9 @@ Variables:
 | `POSTGRES_PASSWORD` | `password` | Docker Postgres password |
 | `PGADMIN_DEFAULT_EMAIL` | `admin@example.com` | pgAdmin login email |
 | `PGADMIN_DEFAULT_PASSWORD` | `admin` | pgAdmin login password |
+| `REDIS_ADDR` | `localhost:6379` | Redis server address |
+| `REDIS_PASSWORD` |  | Redis password, empty for local Docker |
+| `REDIS_DB` | `0` | Redis database index |
 | `MINIO_ENDPOINT` | `localhost:9000` | MinIO API endpoint |
 | `MINIO_ACCESS_KEY` | `minioadmin` | MinIO access key |
 | `MINIO_SECRET_KEY` | `minioadmin` | MinIO secret key |
@@ -466,7 +486,7 @@ Variables:
 
 ## 13. Docker Setup
 
-This repository includes `docker-compose.yml` for local PostgreSQL, pgAdmin, and MinIO.
+This repository includes `docker-compose.yml` for local PostgreSQL, pgAdmin, Redis, and MinIO.
 
 Start services:
 
@@ -589,7 +609,7 @@ Demo flows you can test:
 
 ### UI screenshots
 
-The `snapshot/` folder contains UI screenshots named by screen/function.
+The `snapshot/` folder contains architecture diagrams and UI screenshots named by screen/function. The cache and migration diagrams are shown in the architecture and migration sections above.
 
 #### Trang chu
 

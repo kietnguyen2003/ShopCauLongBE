@@ -20,7 +20,7 @@ func NewCategoryHandler(categoryService *appCategory.Service) *CategoryHandler {
 }
 
 func (h *CategoryHandler) GetCategories(c *gin.Context) {
-	categories, err := h.categoryService.GetCategories()
+	categories, err := h.categoryService.GetCategories(c.Request.Context())
 	if err != nil {
 		errorResponse(c, http.StatusInternalServerError, err.Error())
 		return

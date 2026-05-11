@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"kafka-order-demo/backend/internal/application/address"
@@ -13,6 +14,7 @@ import (
 	"kafka-order-demo/backend/internal/application/product"
 	"kafka-order-demo/backend/internal/application/review"
 	"kafka-order-demo/backend/internal/application/upload"
+	"kafka-order-demo/backend/internal/infrastructure/cache"
 	"kafka-order-demo/backend/internal/infrastructure/config"
 	"kafka-order-demo/backend/internal/infrastructure/database"
 	"kafka-order-demo/backend/internal/infrastructure/security"
@@ -58,13 +60,23 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to initialize object storage:", err)
 	}
+	redisStorage, err := cache.NewRedisStorage(context.Background(), cfg.Redis)
+	if err != nil {
+		log.Fatal("Failed to connect to Redis:", err)
+	}
+	defer func() {
+		if err := redisStorage.Close(); err != nil {
+			log.Printf("Failed to close Redis connection: %v", err)
+		}
+	}()
+	log.Printf("Connected to Redis at %s", cfg.Redis.Addr)
 
 	// Initialize services
 	addressService := address.NewService(addressRepo)
-	authService := auth.NewService(userRepo, passwordHasher, tokenProvider)
+	authService := auth.NewService(userRepo, passwordHasher, tokenProvider, redisStorage)
 	cartService := cart.NewService(cartRepo, productRepo)
-	categoryService := category.NewService(categoryRepo)
-	productService := product.NewService(productRepo, categoryRepo)
+	categoryService := category.NewService(categoryRepo, redisStorage)
+	productService := product.NewService(productRepo, categoryRepo, redisStorage)
 	couponService := coupon.NewService(couponRepo, cartRepo, productRepo)
 	notificationService := notification.NewService(notificationRepo, notificationHub)
 	orderService := order.NewService(orderRepo, productRepo, addressRepo, cartRepo, couponRepo, notificationService)
@@ -114,7 +126,7 @@ func setupRoutes(r *gin.Engine, addressHandler *httpHandlers.AddressHandler, aut
 
 		auth.GET("/me", authHandler.AuthMiddleware(), authHandler.Me)
 		auth.POST("/logout", authHandler.AuthMiddleware(), authHandler.Logout)
-		auth.POST("/refresh-token", authHandler.AuthMiddleware(), authHandler.RefreshToken)
+		auth.POST("/refresh-token", authHandler.RefreshToken)
 		auth.PUT("/change-password", authHandler.AuthMiddleware(), authHandler.ChangePassword)
 	}
 
